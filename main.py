@@ -1,11 +1,10 @@
 import gym
-import gym_simpletetris
 import numpy as np
 from ppo_torch import Agent
 from utils import plot_learning_curve
 
 if __name__ == '__main__':
-    env = gym.make('SimpleTetris-v0')
+    env = gym.make('CartPole-v1')
     N = 20
     batch_size = 5
     n_epochs = 4
@@ -15,7 +14,7 @@ if __name__ == '__main__':
                     input_dims=env.observation_space.shape)
     n_games = 300
 
-    figure_file = 'plots/tetris.png'
+    figure_file = 'plots/cartpole.png'
 
     best_score = env.reward_range[0]
     score_history = []
@@ -25,15 +24,13 @@ if __name__ == '__main__':
     n_steps = 0
 
     for i in range(n_games):
-        observation = env.reset()
-        #observation, info = env.reset()
+        observation, info = env.reset()
         done = False
         score = 0
         while not done:
             action, prob, val = agent.choose_action(observation)
-            observation_, reward, done, info = env.step(action)
-            #observation_, reward, terminated, truncated, info = env.step(action)
-            #done = terminated or truncated
+            observation_, reward, terminated, truncated, info = env.step(action)
+            done = terminated or truncated
             n_steps += 1
             score += reward
             agent.remember(observation, action, prob, val, reward, done)
