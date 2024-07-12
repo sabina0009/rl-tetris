@@ -3,7 +3,7 @@ import gym
 import gym_simpletetris
 import numpy as np
 from ppo_torch import Agent
-#from utils import plot_learning_curve
+from utils import plot_learning_curve
 
 env = gym.make('SimpleTetris-v0')
 N = 20
@@ -26,15 +26,12 @@ def run_worker(agent, process_num):
     for i in range(n_games):
         observation = env.reset()
         observation = observation.flatten()
-        #observation, info = env.reset()
         done = False
         score = 0
         while not done:
             action, prob, val = agent.choose_action(observation)
             observation_, reward, done, info = env.step(action)
             observation_ = observation_.flatten()
-            #observation_, reward, terminated, truncated, info = env.step(action)
-            #done = terminated or truncated
             n_steps += 1
             score += reward
             agent.remember(observation, action, prob, val, reward, done)
