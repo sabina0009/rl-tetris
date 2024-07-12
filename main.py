@@ -26,14 +26,11 @@ if __name__ == '__main__':
 
     for i in range(n_games):
         observation = env.reset()
-        #observation, info = env.reset()
         done = False
         score = 0
         while not done:
             action, prob, val = agent.choose_action(observation)
             observation_, reward, done, info = env.step(action)
-            #observation_, reward, terminated, truncated, info = env.step(action)
-            #done = terminated or truncated
             n_steps += 1
             score += reward
             agent.remember(observation, action, prob, val, reward, done)
