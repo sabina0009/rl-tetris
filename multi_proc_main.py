@@ -5,7 +5,7 @@ import numpy as np
 from ppo_torch import Agent
 from utils import plot_learning_curve
 
-env = gym.make('SimpleTetris-v0')
+env = gym.make('SimpleTetris-v0', reward_step = True)
 N = 20
 batch_size = 64
 n_epochs = 4
@@ -53,7 +53,7 @@ def run_worker(agent, process_num):
 
     pass
 
-threads = 4
+threads = 8
 import torch.multiprocessing as mproc
 import threading
 if __name__ == '__main__':
