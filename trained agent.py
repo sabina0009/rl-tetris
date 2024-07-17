@@ -14,6 +14,7 @@ agent = Agent(n_actions=env.action_space.n, batch_size=batch_size,
                 input_dims=[env.observation_space.shape[0] * env.observation_space.shape[1]])
 agent.load_models()
 n_games = 10
+scores = []
 
 for i in range(n_games):
     observation = env.reset()
@@ -22,10 +23,9 @@ for i in range(n_games):
     score = 0
     while not done:
         env.render()
-        #action, _, _ = agent.choose_action(observation)
-        action = env.action_space.sample()
+        action, _, _ = agent.choose_action(observation)
         observation_, reward, done, info = env.step(action)
         observation_ = observation_.flatten()
         score += reward
         observation = observation_
-    print(f"Game: {i}, Score: {score}")
+    print(score)
