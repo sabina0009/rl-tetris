@@ -5,18 +5,18 @@ import numpy as np
 from ppo_torch import Agent
 from utils import plot_learning_curve
 
-env = gym.make('SimpleTetris-v0', reward_step=True, high_scoring=True)
+env = gym.make('SimpleTetris-v0', reward_step=True, high_scoring=True, height=8, width=4)
 N = 20
 batch_size = 64
 n_epochs = 4
-alpha = 0.0003
+alpha = 0.0001
 agent = Agent(n_actions=env.action_space.n, batch_size=batch_size, 
                     alpha=alpha, n_epochs=n_epochs, 
                     input_dims=[env.observation_space.shape[0] * env.observation_space.shape[1]])
 
 def run_worker(agent, process_num):
     n_games = 2000
-    figure_file = 'plots/tetris2000games(high-scoring).png'
+    figure_file = 'plots/tetris2000games8x4.png'
     best_score = env.reward_range[0]
     score_history = []
     learn_iters = 0

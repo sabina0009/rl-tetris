@@ -4,7 +4,7 @@ import numpy as np
 from ppo_torch import Agent
 
     
-env = gym.make('SimpleTetris-v0', reward_step = True)
+env = gym.make('SimpleTetris-v0', reward_step = True, high_scoring=True, height=8, width=4)
 N = 20
 batch_size = 64
 n_epochs = 4
