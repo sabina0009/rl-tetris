@@ -15,8 +15,8 @@ agent = Agent(n_actions=env.action_space.n, batch_size=batch_size,
                     input_dims=[env.observation_space.shape[0] * env.observation_space.shape[1]])
 
 def run_worker(agent, process_num):
-    n_games = 1000
-    figure_file = 'plots/tetris1000games.png'
+    n_games = 500
+    figure_file = 'plots/tetris(factorisednoisynetwork-sigma=1-penaliseholes)500games.png'
     best_score = env.reward_range[0]
     score_history = []
     learn_iters = 0

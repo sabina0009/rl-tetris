@@ -4,6 +4,7 @@ import torch as T
 import torch.nn as nn
 import torch.optim as optim
 from torch.distributions.categorical import Categorical
+from noisynetworks import FactorisedNoisyLayer
 
 class PPOMemory:
     def __init__(self, batch_size):
@@ -54,11 +55,11 @@ class ActorNetwork(nn.Module):
 
         self.checkpoint_file = os.path.join(chkpt_dir, 'actor_torch_ppo')
         self.actor = nn.Sequential(
-                nn.Linear(*input_dims, fc1_dims),
+                FactorisedNoisyLayer(*input_dims, fc1_dims),
                 nn.ReLU(),
-                nn.Linear(fc1_dims, fc2_dims),
+                FactorisedNoisyLayer(fc1_dims, fc2_dims),
                 nn.ReLU(),
-                nn.Linear(fc2_dims, n_actions),
+                FactorisedNoisyLayer(fc2_dims, n_actions),
                 nn.Softmax(dim=-1)
         )
 
