@@ -262,7 +262,7 @@ class FactorisedNoisyLayer(AbstractNoisyLayer):
             self,
             in_features: int,
             out_features: int,
-            sigma: float = 2.0,
+            sigma: float = 1.0,
     ):
         super().__init__(
             in_features=in_features,
