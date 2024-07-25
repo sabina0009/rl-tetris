@@ -26,13 +26,13 @@ def run_worker(agent, process_num):
     np.random.seed(process_num)
     for i in range(n_games):
         observation = env.reset()
-        observation = observation.flatten()
+        #observation = observation.flatten()
         done = False
         score = 0
         while not done:
             action, prob, val = agent.choose_action(observation)
             observation_, reward, done, info = env.step(action)
-            observation_ = observation_.flatten()
+            #observation_ = observation_.flatten()
             n_steps += 1
             score += reward
             agent.remember(observation, action, prob, val, reward, done)
