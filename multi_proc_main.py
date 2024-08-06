@@ -1,5 +1,5 @@
 
-import gym
+import gymnasium as gym
 import gym_simpletetris
 import numpy as np
 from ppo_torch import Agent
@@ -13,7 +13,7 @@ alpha = 0.0003
 agent = Agent(n_actions=env.action_space.n, batch_size=batch_size, 
                     alpha=alpha, n_epochs=n_epochs, 
                     input_dims=[env.observation_space.shape[0] * env.observation_space.shape[1]])
-filename = 'tetris-linearnetworks'
+filename = 'tetris-sharedACnetwork'
 
 def run_worker(agent, process_num):
     n_games = 1000
@@ -25,13 +25,14 @@ def run_worker(agent, process_num):
     n_steps = 0
     np.random.seed(process_num)
     for i in range(n_games):
-        observation = env.reset()
+        observation, _ = env.reset()
         observation = observation.flatten()
         done = False
         score = 0
         while not done:
             action, prob, val = agent.choose_action(observation)
-            observation_, reward, done, info = env.step(action)
+            observation_, reward, terminated, truncated, _ = env.step(action)
+            done = terminated or truncated
             observation_ = observation_.flatten()
             n_steps += 1
             score += reward
@@ -60,8 +61,7 @@ import torch.multiprocessing as mproc
 import threading
 if __name__ == '__main__':
     #share the network weights between the processes
-    agent.actor.share_memory()
-    agent.critic.share_memory()
+    agent.actor_critic.share_memory()
     processes = []
     UPDATE_EVENT, ROLLING_EVENT = threading.Event(), threading.Event()
     ROLLING_EVENT.set()

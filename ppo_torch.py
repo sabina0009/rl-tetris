@@ -47,59 +47,41 @@ class PPOMemory:
         self.dones = []
         self.vals = []
 
-class ActorNetwork(nn.Module):
+class ActorCriticNetwork(nn.Module):
     def __init__(self, n_actions, input_dims, alpha,
-            fc1_dims=64, fc2_dims=64, chkpt_dir='tmp/ppo'):
-        super(ActorNetwork, self).__init__()
+            fc1_dims=32, fc2_dims=64, chkpt_dir='tmp/ppo'):
+        super(ActorCriticNetwork, self).__init__()
 
-        self.checkpoint_file = os.path.join(chkpt_dir, 'actor_torch_ppo')
-        self.actor = nn.Sequential(
+        self.checkpoint_file = os.path.join(chkpt_dir, 'actor_critic_torch_ppo')
+        self.features = nn.Sequential(
                 nn.Linear(*input_dims, fc1_dims),
                 nn.ReLU(),
                 nn.Linear(fc1_dims, fc2_dims),
                 nn.ReLU(),
-                nn.Linear(fc2_dims, n_actions),
-                nn.Softmax(dim=-1)
         )
+
+        self.actor = nn.Sequential(
+            nn.Linear(fc2_dims, n_actions),
+            nn.Softmax(dim=-1)
+        )
+        self.critic = nn.Linear(fc2_dims, 1)
 
         self.optimizer = optim.Adam(self.parameters(), lr=alpha)
         self.device = T.device('cpu')
         self.to(self.device)
 
-    def forward(self, state):
+    def get_state(self, obs):
+        state = self.features(obs)
+
+        return state
+
+    def forward(self, obs):
+        state = self.get_state(obs)
         dist = self.actor(state)
         dist = Categorical(dist)
-        
-        return dist
-
-    def save_checkpoint(self):
-        T.save(self.state_dict(), self.checkpoint_file)
-
-    def load_checkpoint(self):
-        self.load_state_dict(T.load(self.checkpoint_file))
-
-class CriticNetwork(nn.Module):
-    def __init__(self, input_dims, alpha, fc1_dims=256, fc2_dims=256,
-            chkpt_dir='tmp/ppo'):
-        super(CriticNetwork, self).__init__()
-
-        self.checkpoint_file = os.path.join(chkpt_dir, 'critic_torch_ppo')
-        self.critic = nn.Sequential(
-                nn.Linear(*input_dims, fc1_dims),
-                nn.ReLU(),
-                nn.Linear(fc1_dims, fc2_dims),
-                nn.ReLU(),
-                nn.Linear(fc2_dims, 1)
-        )
-
-        self.optimizer = optim.Adam(self.parameters(), lr=alpha)
-        self.device = T.device('cpu')
-        self.to(self.device)
-
-    def forward(self, state):
         value = self.critic(state)
-
-        return value
+        
+        return dist, value
 
     def save_checkpoint(self):
         T.save(self.state_dict(), self.checkpoint_file)
@@ -115,8 +97,7 @@ class Agent:
         self.n_epochs = n_epochs
         self.gae_lambda = gae_lambda
 
-        self.actor = ActorNetwork(n_actions, input_dims, alpha)
-        self.critic = CriticNetwork(input_dims, alpha)
+        self.actor_critic = ActorCriticNetwork(n_actions, input_dims, alpha)
         self.memory = PPOMemory(batch_size)
        
     def remember(self, state, action, probs, vals, reward, done):
@@ -124,19 +105,16 @@ class Agent:
 
     def save_models(self):
         print('... saving models ...')
-        self.actor.save_checkpoint()
-        self.critic.save_checkpoint()
+        self.actor_critic.save_checkpoint()
 
     def load_models(self):
         print('... loading models ...')
-        self.actor.load_checkpoint()
-        self.critic.load_checkpoint()
+        self.actor_critic.load_checkpoint()
 
     def choose_action(self, observation):
-        state = T.tensor(observation, dtype=T.float).to(self.actor.device)
+        state = T.tensor(observation, dtype=T.float).to(self.actor_critic.device)
 
-        dist = self.actor(state)
-        value = self.critic(state)
+        dist, value = self.actor_critic(state)
         action = dist.sample()
 
         probs = T.squeeze(dist.log_prob(action)).item()
@@ -162,15 +140,14 @@ class Agent:
                             (1-int(dones_arr[k])) - values[k])
                     discount *= self.gamma*self.gae_lambda
                 advantage[t] = a_t
-            advantage = T.tensor(advantage).to(self.actor.device)
+            advantage = T.tensor(advantage).to(self.actor_critic.device)
 
-            values = T.tensor(values).to(self.actor.device)
+            values = T.tensor(values).to(self.actor_critic.device)
             for batch in batches:
-                states = T.tensor(state_arr[batch], dtype=T.float).to(self.actor.device)
-                old_probs = T.tensor(old_prob_arr[batch]).to(self.actor.device)
-                actions = T.tensor(action_arr[batch]).to(self.actor.device)
-                dist = self.actor(states)
-                critic_value = self.critic(states)
+                states = T.tensor(state_arr[batch], dtype=T.float).to(self.actor_critic.device)
+                old_probs = T.tensor(old_prob_arr[batch]).to(self.actor_critic.device)
+                actions = T.tensor(action_arr[batch]).to(self.actor_critic.device)
+                dist, critic_value = self.actor_critic(states)
 
                 critic_value = T.squeeze(critic_value)
 
@@ -187,11 +164,9 @@ class Agent:
                 critic_loss = critic_loss.mean()
 
                 total_loss = actor_loss + 0.5*critic_loss
-                self.actor.optimizer.zero_grad()
-                self.critic.optimizer.zero_grad()
+                self.actor_critic.optimizer.zero_grad()
                 total_loss.backward()
-                self.actor.optimizer.step()
-                self.critic.optimizer.step()
+                self.actor_critic.optimizer.step()
 
         self.memory.clear_memory()
 
