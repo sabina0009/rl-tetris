@@ -1,7 +1,6 @@
 import gym
 import gym_simpletetris
 import numpy as np
-import json
 from ppo_torch import Agent
 from utils import plot_learning_curve
 
@@ -21,18 +20,17 @@ if __name__ == '__main__':
     learn_iters = 0
     avg_score = 0
     n_steps = 0
+    start_time = time.time()
     for i in range(n_games):
-        observation = env.reset()
+        observation, _ = env.reset()
         observation = observation.flatten()
-        #observation, info = env.reset()
         done = False
         score = 0
         while not done:
             action, prob, val = agent.choose_action(observation)
-            observation_, reward, done, info = env.step(action)
+            observation_, reward, terminated, truncated, info = env.step(action)
+            done = terminated or truncated
             observation_ = observation_.flatten()
-            #observation_, reward, terminated, truncated, info = env.step(action)
-            #done = terminated or truncated
             n_steps += 1
             score += reward
             agent.remember(observation, action, prob, val, reward, done)
@@ -47,8 +45,13 @@ if __name__ == '__main__':
             best_score = avg_score
             agent.save_models()
 
+        time_elapsed = time.time() - start_time
+        hours = time_elapsed // 3600
+        time_elapsed = time_elapsed % 3600
+        minutes = time_elapsed // 60
+        seconds = time_elapsed % 60
         print('episode', i, 'score %.1f' % score, 'avg score %.1f' % avg_score,
-                'time_steps', n_steps, 'learning_steps', learn_iters)
+                'time_steps', n_steps, 'learning_steps', learn_iters, 'runtime %d:%d:%.1f' % (hours, minutes, seconds))
     
     np.savetxt('results/tetris.txt', score_history, fmt='%d')
 
