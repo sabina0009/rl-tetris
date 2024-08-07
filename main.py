@@ -3,6 +3,7 @@ import gym_simpletetris
 import numpy as np
 from ppo_torch import Agent
 from utils import plot_learning_curve
+import time
 
 if __name__ == '__main__':
     env = gym.make('SimpleTetris-v0', reward_step=True)
