@@ -1,10 +1,9 @@
-import gymnasium as gym
+import gym
 import gym_simpletetris
 import numpy as np
 import json
 from ppo_torch import Agent
 from utils import plot_learning_curve
-import time 
 
 if __name__ == '__main__':
     env = gym.make('SimpleTetris-v0', reward_step=True)
@@ -15,25 +14,25 @@ if __name__ == '__main__':
     agent = Agent(n_actions=env.action_space.n, batch_size=batch_size, 
                     alpha=alpha, n_epochs=n_epochs, 
                     input_dims=[env.observation_space.shape[0] * env.observation_space.shape[1]])
-    n_games = 200
+    n_games = 10
     figure_file = 'plots/tetris.png'
     best_score = env.reward_range[0]
     score_history = []
     learn_iters = 0
     avg_score = 0
     n_steps = 0
-    start_time = time.time()
     for i in range(n_games):
-        observation, _ = env.reset()
+        observation = env.reset()
         observation = observation.flatten()
+        #observation, info = env.reset()
         done = False
         score = 0
         while not done:
             action, prob, val = agent.choose_action(observation)
-            #observation_, reward, done, info = env.step(action)
-            observation_, reward, terminated, truncated, _ = env.step(action)
-            done = terminated or truncated
+            observation_, reward, done, info = env.step(action)
             observation_ = observation_.flatten()
+            #observation_, reward, terminated, truncated, info = env.step(action)
+            #done = terminated or truncated
             n_steps += 1
             score += reward
             agent.remember(observation, action, prob, val, reward, done)
@@ -49,7 +48,7 @@ if __name__ == '__main__':
             agent.save_models()
 
         print('episode', i, 'score %.1f' % score, 'avg score %.1f' % avg_score,
-                'time_steps', n_steps, 'learning_steps', learn_iters, 'runtime %.1f' % (time.time() - start_time))
+                'time_steps', n_steps, 'learning_steps', learn_iters)
     
     np.savetxt('results/tetris.txt', score_history, fmt='%d')
 

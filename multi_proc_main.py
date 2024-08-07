@@ -1,10 +1,9 @@
 
-import gymnasium as gym
+import gym
 import gym_simpletetris
 import numpy as np
 from ppo_torch import Agent
 from utils import plot_learning_curve
-import time
 
 env = gym.make('SimpleTetris-v0', reward_step=True)
 N = 20
@@ -14,27 +13,25 @@ alpha = 0.0003
 agent = Agent(n_actions=env.action_space.n, batch_size=batch_size, 
                     alpha=alpha, n_epochs=n_epochs, 
                     input_dims=[env.observation_space.shape[0] * env.observation_space.shape[1]])
-filename = 'tetris-200games'
+filename = 'tetris-linearnetworks'
 
 def run_worker(agent, process_num):
-    n_games = 200
+    n_games = 1000
     figure_file = f'plots/{filename}.png'
     best_score = env.reward_range[0]
     score_history = []
     learn_iters = 0
     avg_score = 0
     n_steps = 0
-    start_time = time.time()
     np.random.seed(process_num)
     for i in range(n_games):
-        observation, _ = env.reset()
+        observation = env.reset()
         observation = observation.flatten()
         done = False
         score = 0
         while not done:
             action, prob, val = agent.choose_action(observation)
-            observation_, reward, terminated, truncated, _ = env.step(action)
-            done = terminated or truncated
+            observation_, reward, done, info = env.step(action)
             observation_ = observation_.flatten()
             n_steps += 1
             score += reward
@@ -50,8 +47,8 @@ def run_worker(agent, process_num):
             best_score = avg_score
             agent.save_models()
 
-        print('process_num', process_num, 'episode', i, 'score %.1f' % score, 'avg score %.1f' % avg_score,
-                'time_steps', n_steps, 'learning_steps', learn_iters, 'runtime %.1f' % (time.time() - start_time))
+        print('process_num: ', process_num, 'episode', i, 'score %.1f' % score, 'avg score %.1f' % avg_score,
+                'time_steps', n_steps, 'learning_steps', learn_iters)
     np.savetxt(f'results/{filename}.txt', score_history, fmt='%d')
     x = [i+1 for i in range(len(score_history))]
     plot_learning_curve(x, score_history, figure_file)
