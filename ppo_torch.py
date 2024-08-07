@@ -49,7 +49,7 @@ class PPOMemory:
 
 class ActorCriticNetwork(nn.Module):
     def __init__(self, n_actions, input_dims, alpha,
-            fc1_dims=32, fc2_dims=64, chkpt_dir='tmp/ppo'):
+            fc1_dims=64, fc2_dims=64, chkpt_dir='tmp/ppo'):
         super(ActorCriticNetwork, self).__init__()
 
         self.checkpoint_file = os.path.join(chkpt_dir, 'actor_critic_torch_ppo')
@@ -71,17 +71,18 @@ class ActorCriticNetwork(nn.Module):
         self.to(self.device)
 
     def get_state(self, obs):
+        obs = obs.to(self.device)
         state = self.features(obs)
-
         return state
 
-    def forward(self, obs):
-        state = self.get_state(obs)
+    def get_probs(self, state):
         dist = self.actor(state)
-        dist = Categorical(dist)
+        dist = Categorical(dist)      
+        return dist
+
+    def get_value(self, state):
         value = self.critic(state)
-        
-        return dist, value
+        return value
 
     def save_checkpoint(self):
         T.save(self.state_dict(), self.checkpoint_file)
@@ -112,9 +113,11 @@ class Agent:
         self.actor_critic.load_checkpoint()
 
     def choose_action(self, observation):
-        state = T.tensor(observation, dtype=T.float).to(self.actor_critic.device)
+        obs = T.tensor(observation, dtype=T.float).to(self.actor_critic.device)
 
-        dist, value = self.actor_critic(state)
+        state = self.actor_critic.get_state(obs)
+        dist = self.actor_critic.get_probs(state)
+        value = self.actor_critic.get_value(state)
         action = dist.sample()
 
         probs = T.squeeze(dist.log_prob(action)).item()
@@ -144,10 +147,12 @@ class Agent:
 
             values = T.tensor(values).to(self.actor_critic.device)
             for batch in batches:
-                states = T.tensor(state_arr[batch], dtype=T.float).to(self.actor_critic.device)
+                obs = T.tensor(state_arr[batch], dtype=T.float).to(self.actor_critic.device)
                 old_probs = T.tensor(old_prob_arr[batch]).to(self.actor_critic.device)
                 actions = T.tensor(action_arr[batch]).to(self.actor_critic.device)
-                dist, critic_value = self.actor_critic(states)
+                states = self.actor_critic.get_state(obs)
+                dist = self.actor_critic.get_probs(states)
+                critic_value = self.actor_critic.get_value(states)
 
                 critic_value = T.squeeze(critic_value)
 
