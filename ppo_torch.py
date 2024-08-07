@@ -79,7 +79,7 @@ class ActorNetwork(nn.Module):
         self.load_state_dict(T.load(self.checkpoint_file))
 
 class CriticNetwork(nn.Module):
-    def __init__(self, input_dims, alpha, fc1_dims=256, fc2_dims=256,
+    def __init__(self, input_dims, alpha, fc1_dims=64, fc2_dims=64,
             chkpt_dir='tmp/ppo'):
         super(CriticNetwork, self).__init__()
 

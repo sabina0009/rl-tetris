@@ -1,4 +1,4 @@
-import gym
+import gymnasium as gym
 import gym_simpletetris
 import numpy as np
 from ppo_torch import Agent
@@ -14,8 +14,9 @@ if __name__ == '__main__':
     agent = Agent(n_actions=env.action_space.n, batch_size=batch_size, 
                     alpha=alpha, n_epochs=n_epochs, 
                     input_dims=[env.observation_space.shape[0] * env.observation_space.shape[1]])
-    n_games = 10
-    figure_file = 'plots/tetris.png'
+    n_games = 1000
+    filename = 'tetris-separate-ac-networks'
+    figure_file = f'plots/{filename}.png'
     best_score = env.reward_range[0]
     score_history = []
     learn_iters = 0
@@ -54,7 +55,7 @@ if __name__ == '__main__':
         print('episode', i, 'score %.1f' % score, 'avg score %.1f' % avg_score,
                 'time_steps', n_steps, 'learning_steps', learn_iters, 'runtime %d:%d:%.1f' % (hours, minutes, seconds))
     
-    np.savetxt('results/tetris.txt', score_history, fmt='%d')
+    np.savetxt(f'results/{filename}.txt', score_history, fmt='%d')
 
     x = [i+1 for i in range(len(score_history))]
     plot_learning_curve(x, score_history, figure_file)
