@@ -10,12 +10,13 @@ if __name__ == '__main__':
     N = 20
     batch_size = 64
     n_epochs = 4
+    n_options = 2
     alpha = 0.0003
-    agent = Agent(n_actions=env.action_space.n, batch_size=batch_size, 
+    agent = Agent(n_options = n_options, n_actions=env.action_space.n, batch_size=batch_size, 
                     alpha=alpha, n_epochs=n_epochs, 
                     input_dims=[env.observation_space.shape[0] * env.observation_space.shape[1]])
     n_games = 1000
-    filename = 'tetris-separate-ac-networks'
+    filename = 'tetris-option-critic-separate-ac-networks'
     figure_file = f'plots/{filename}.png'
     best_score = env.reward_range[0]
     score_history = []
@@ -23,23 +24,46 @@ if __name__ == '__main__':
     avg_score = 0
     n_steps = 0
     start_time = time.time()
+
+    option_lengths = {i:[] for i in range(n_options)}
+
     for i in range(n_games):
+
         observation, _ = env.reset()
         observation = observation.flatten()
         done = False
         score = 0
+
+        current_option = 0
+        state = agent.option_critic.get_state(observation)
+        option_termination = True
+        curr_op_len = 0
+
         while not done:
-            action, prob, val = agent.choose_action(observation)
+
+            if option_termination:
+                option_lengths[current_option].append(curr_op_len)
+                current_option = agent.option_critic.get_next_option(state)
+                curr_op_len = 0
+
+            action, prob, val = agent.choose_action(observation, current_option)
+
             observation_, reward, terminated, truncated, info = env.step(action)
             done = terminated or truncated
             observation_ = observation_.flatten()
             n_steps += 1
+            curr_op_len += 1
             score += reward
-            agent.remember(observation, action, prob, val, reward, done)
+            agent.remember(observation, current_option, action, prob, val, reward, done)
+
             if n_steps % N == 0:
                 agent.learn()
                 learn_iters += 1
+
             observation = observation_
+            state = agent.option_critic.get_state(observation)
+            option_termination = agent.option_critic.predict_option_termination(state, current_option)
+
         score_history.append(score)
         avg_score = np.mean(score_history[-100:])
 
