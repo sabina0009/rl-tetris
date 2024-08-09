@@ -83,8 +83,8 @@ class OptionCriticNetwork(nn.Module):
         self.device = T.device('cuda' if T.cuda.is_available() else 'cpu')
         self.to(self.device)
 
-    def get_state(self, obs):
-        obs = T.tensor(obs).to(self.device)
+    def get_state(self, observation):
+        obs = T.tensor(observation).detach().to(self.device)
         state = self.features(obs)
         return state
     
@@ -101,7 +101,7 @@ class OptionCriticNetwork(nn.Module):
         return int(option)
 
     def get_value(self, observation):
-        obs = T.tensor(observation).to(self.device)
+        obs = T.tensor(observation).detach().to(self.device)
         return self.critic(obs)
 
     def predict_option_termination(self, state, current_option):

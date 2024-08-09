@@ -15,8 +15,8 @@ if __name__ == '__main__':
     agent = Agent(n_options = n_options, n_actions=env.action_space.n, batch_size=batch_size, 
                     alpha=alpha, n_epochs=n_epochs, 
                     input_dims=[env.observation_space.shape[0] * env.observation_space.shape[1]])
-    n_games = 1000
-    filename = 'tetris-option-critic-separate-ac-networks'
+    n_games = 10000
+    filename = 'tetris-option-critic-10000games'
     figure_file = f'plots/{filename}.png'
     best_score = env.reward_range[0]
     score_history = []
