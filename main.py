@@ -4,9 +4,17 @@ import numpy as np
 from ppo_torch import Agent
 from utils import plot_learning_curve
 import time
+from fourrooms import Fourrooms
 
 if __name__ == '__main__':
-    env = gym.make('SimpleTetris-v0', reward_step=True)
+    environment = 'SimpleTetris-v0'
+
+    if environment == 'fourrooms':
+        env = Fourrooms()
+    elif environment != 'SimpleTetris-v0':
+        env = gym.make(environment)
+    else:
+        env = gym.make(environment, reward_step=True)
     N = 20
     batch_size = 64
     n_epochs = 4
@@ -14,20 +22,23 @@ if __name__ == '__main__':
     alpha = 0.0003
     agent = Agent(n_options = n_options, n_actions=env.action_space.n, batch_size=batch_size, 
                     alpha=alpha, n_epochs=n_epochs, 
-                    input_dims=[env.observation_space.shape[0] * env.observation_space.shape[1]])
-    n_games = 10000
-    filename = 'tetris-option-critic-10000games'
+                    input_dims=[env.observation_space.shape[0]*env.observation_space.shape[1]])
+    #n_games = 10000
+    max_steps = 100000
+    filename = 'tetris'
     figure_file = f'plots/{filename}.png'
     best_score = env.reward_range[0]
     score_history = []
     learn_iters = 0
     avg_score = 0
     n_steps = 0
+    episode = 0
     start_time = time.time()
 
     option_lengths = {i:[] for i in range(n_options)}
 
-    for i in range(n_games):
+    #for i in range(n_games):
+    while n_steps < max_steps:
 
         observation, _ = env.reset()
         observation = observation.flatten()
@@ -66,6 +77,7 @@ if __name__ == '__main__':
 
         score_history.append(score)
         avg_score = np.mean(score_history[-100:])
+        episode += 1
 
         if avg_score > best_score:
             best_score = avg_score
@@ -76,7 +88,7 @@ if __name__ == '__main__':
         time_elapsed = time_elapsed % 3600
         minutes = time_elapsed // 60
         seconds = time_elapsed % 60
-        print('episode', i, 'score %.1f' % score, 'avg score %.1f' % avg_score,
+        print('episode', episode, 'score %.1f' % score, 'avg score %.1f' % avg_score,
                 'time_steps', n_steps, 'learning_steps', learn_iters, 'runtime %d:%d:%.1f' % (hours, minutes, seconds))
     
     np.savetxt(f'results/{filename}.txt', score_history, fmt='%d')
