@@ -70,14 +70,7 @@ class OptionCriticNetwork(nn.Module):
         self.terminations = nn.Linear(fc2_dims, n_options)
         self.options_W = nn.Parameter(T.zeros(n_options, fc2_dims, n_actions))
         self.options_b = nn.Parameter(T.zeros(n_options, n_actions))
-
-        self.critic = nn.Sequential(
-                nn.Linear(*input_dims, fc1_dims),
-                nn.ReLU(),
-                nn.Linear(fc1_dims, fc2_dims),
-                nn.ReLU(),
-                nn.Linear(fc2_dims, 1)
-        )
+        self.critic = nn.Linear(fc2_dims, 1)
 
         self.optimizer = optim.Adam(self.parameters(), lr=alpha)
         self.device = T.device('cuda' if T.cuda.is_available() else 'cpu')
@@ -100,9 +93,8 @@ class OptionCriticNetwork(nn.Module):
 
         return int(option)
 
-    def get_value(self, observation):
-        obs = T.tensor(observation).detach().to(self.device)
-        return self.critic(obs)
+    def get_value(self, state):
+        return self.critic(state)
 
     def predict_option_termination(self, state, current_option):
         termination = self.terminations(state)[current_option].sigmoid()
@@ -191,11 +183,10 @@ class Agent:
         self.option_critic.load_checkpoint()
         #self.critic.load_checkpoint()
 
-    def choose_action(self, observation, option):
-        state = self.option_critic.get_state(observation)
+    def choose_action(self, state, option):
 
         dist = self.option_critic.get_action_dist(state, option)
-        value = self.option_critic.get_value(observation)
+        value = self.option_critic.get_value(state)
         action = dist.sample()
 
         probs = T.squeeze(dist.log_prob(action)).item()
@@ -231,7 +222,7 @@ class Agent:
                 options = T.tensor(option_arr[batch]).to(self.option_critic.device)
                 actions = T.tensor(action_arr[batch]).to(self.option_critic.device)
                 dist = self.option_critic.get_action_dist(states, options)
-                critic_value = self.option_critic.get_value(obs)
+                critic_value = self.option_critic.get_value(states)
 
                 critic_value = T.squeeze(critic_value)
 

@@ -15,7 +15,7 @@ if __name__ == '__main__':
     agent = Agent(n_options = n_options, n_actions=env.action_space.n, batch_size=batch_size, 
                     alpha=alpha, n_epochs=n_epochs, 
                     input_dims=[env.observation_space.shape[0] * env.observation_space.shape[1]])
-    n_games = 10000
+    n_games = 5000
     filename = 'tetris-option-critic-10000games'
     figure_file = f'plots/{filename}.png'
     best_score = env.reward_range[0]
@@ -46,7 +46,7 @@ if __name__ == '__main__':
                 current_option = agent.option_critic.get_next_option(state)
                 curr_op_len = 0
 
-            action, prob, val = agent.choose_action(observation, current_option)
+            action, prob, val = agent.choose_action(state, current_option)
 
             observation_, reward, terminated, truncated, info = env.step(action)
             done = terminated or truncated
