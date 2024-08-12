@@ -3,7 +3,7 @@ import gym_simpletetris
 import numpy as np
 from ppo_torch import Agent
 import time
-
+from utils import to_tensor
     
 env = gym.make('SimpleTetris-v0', reward_step = True)
 N = 20
@@ -26,10 +26,11 @@ for i in range(n_games):
     score = 0
     while not done:
         env.render()
-        state = agent.option_critic.get_state(observation)
+        obs = to_tensor(observation).to(agent.option_critic.device)
+        state = agent.option_critic.get_state(obs)
         if agent.option_critic.predict_option_termination(state, current_option):
             current_option = agent.option_critic.get_next_option(state)
-        action, _, _ = agent.choose_action(state, current_option)
+        action, _, _ = agent.choose_action(obs, current_option)
         observation_, reward, terminated, truncated, info = env.step(action)
         done = terminated or truncated
         observation_ = observation_.flatten()

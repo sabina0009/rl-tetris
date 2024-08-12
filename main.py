@@ -2,7 +2,7 @@ import gymnasium as gym
 import gym_simpletetris
 import numpy as np
 from ppo_torch import Agent
-from utils import plot_learning_curve
+from utils import plot_learning_curve, to_tensor
 import time
 from fourrooms import Fourrooms
 
@@ -21,11 +21,11 @@ if __name__ == '__main__':
     n_options = 2
     alpha = 0.0003
     agent = Agent(n_options = n_options, n_actions=env.action_space.n, batch_size=batch_size, 
-                    alpha=alpha, n_epochs=n_epochs, 
+                    alpha=alpha, n_epochs=n_epochs, eta = 0,
                     input_dims=[env.observation_space.shape[0]*env.observation_space.shape[1]])
     #n_games = 10000
-    max_steps = 100000
-    filename = 'tetris'
+    max_steps = 500000
+    filename = 'tetris-optioncriticV4'
     figure_file = f'plots/{filename}.png'
     best_score = env.reward_range[0]
     score_history = []
@@ -49,6 +49,7 @@ if __name__ == '__main__':
         state = agent.option_critic.get_state(observation)
         option_termination = True
         curr_op_len = 0
+        termination_cost = 0
 
         while not done:
 
@@ -56,6 +57,9 @@ if __name__ == '__main__':
                 option_lengths[current_option].append(curr_op_len)
                 current_option = agent.option_critic.get_next_option(state)
                 curr_op_len = 0
+                termination_cost = agent.eta
+            else:
+                termination_cost = 0
 
             action, prob, val = agent.choose_action(observation, current_option)
 
@@ -64,15 +68,16 @@ if __name__ == '__main__':
             observation_ = observation_.flatten()
             n_steps += 1
             curr_op_len += 1
+            reward = reward - termination_cost
             score += reward
-            agent.remember(observation, current_option, action, prob, val, reward, done)
+            agent.remember(observation, current_option, action, prob, val, reward, done, termination_cost)
 
             if n_steps % N == 0:
                 agent.learn()
                 learn_iters += 1
 
             observation = observation_
-            state = agent.option_critic.get_state(observation)
+            state = agent.option_critic.get_state(to_tensor(observation))
             option_termination = agent.option_critic.predict_option_termination(state, current_option)
 
         score_history.append(score)

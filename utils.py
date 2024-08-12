@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import torch
 
 def plot_learning_curve(x,scores, figure_file):
     running_avg = np.zeros(len(scores))
@@ -23,3 +24,8 @@ def plot_multiple_learning_curves(figure_file, *results_files):
         plt.legend()
         j += 1
     plt.savefig(figure_file)
+
+def to_tensor(obs):
+    obs = np.asarray(obs)
+    obs = torch.from_numpy(obs).float()
+    return obs

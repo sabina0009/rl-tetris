@@ -14,6 +14,7 @@ class PPOMemory:
         self.actions = []
         self.rewards = []
         self.dones = []
+        self.term_costs = []
 
         self.batch_size = batch_size
 
@@ -31,9 +32,10 @@ class PPOMemory:
                 np.array(self.vals),\
                 np.array(self.rewards),\
                 np.array(self.dones),\
+                np.array(self.term_costs),\
                 batches
 
-    def store_memory(self, state, option, action, probs, vals, reward, done):
+    def store_memory(self, state, option, action, probs, vals, reward, done, term_cost):
         self.states.append(state)
         self.options.append(option)
         self.actions.append(action)
@@ -41,6 +43,7 @@ class PPOMemory:
         self.vals.append(vals)
         self.rewards.append(reward)
         self.dones.append(done)
+        self.term_costs.append(term_cost)
 
     def clear_memory(self):
         self.states = []
@@ -50,6 +53,7 @@ class PPOMemory:
         self.rewards = []
         self.dones = []
         self.vals = []
+        self.term_costs = []
 
 class OptionCriticNetwork(nn.Module):
     def __init__(self, n_options, n_actions, input_dims, alpha,
@@ -108,7 +112,7 @@ class OptionCriticNetwork(nn.Module):
         termination = self.terminations(state)[current_option].sigmoid()
         option_termination = Bernoulli(termination).sample()
 
-        return bool(option_termination.item())
+        return bool(option_termination.item()), 
     
     def get_terminations(self, state):
         return self.terminations(state).sigmoid()
@@ -167,19 +171,20 @@ class CriticNetwork(nn.Module):
 
 class Agent:
     def __init__(self, n_options, n_actions, input_dims, gamma=0.99, alpha=0.0003, gae_lambda=0.95,
-            policy_clip=0.2, batch_size=64, n_epochs=10):
+            policy_clip=0.2, batch_size=64, n_epochs=10, eta = 0):
         self.gamma = gamma
         self.policy_clip = policy_clip
         self.n_epochs = n_epochs
         self.gae_lambda = gae_lambda
+        self.eta = eta
 
         self.option_critic = OptionCriticNetwork(n_options, n_actions, input_dims, alpha)
         #self.actor = ActorNetwork(n_actions, input_dims, alpha)
         #self.critic = CriticNetwork(input_dims, alpha)
         self.memory = PPOMemory(batch_size)
        
-    def remember(self, state, option, action, probs, vals, reward, done):
-        self.memory.store_memory(state, option, action, probs, vals, reward, done)
+    def remember(self, state, option, action, probs, vals, reward, done, termination_cost):
+        self.memory.store_memory(state, option, action, probs, vals, reward, done, termination_cost)
 
     def save_models(self):
         print('... saving models ...')
@@ -207,7 +212,7 @@ class Agent:
     def learn(self):
         for _ in range(self.n_epochs):
             obs_arr, option_arr, action_arr, old_prob_arr, vals_arr,\
-            reward_arr, dones_arr, batches = \
+            reward_arr, dones_arr, term_costs_arr, batches = \
                     self.memory.generate_batches()
 
             values = vals_arr
@@ -230,6 +235,7 @@ class Agent:
                 old_probs = T.tensor(old_prob_arr[batch]).to(self.option_critic.device)
                 options = T.tensor(option_arr[batch]).to(self.option_critic.device)
                 actions = T.tensor(action_arr[batch]).to(self.option_critic.device)
+                term_costs = T.tensor(term_costs_arr[batch]).to(self.option_critic.device)
                 dist = self.option_critic.get_action_dist(states, options)
                 critic_value = self.option_critic.get_value(obs)
 
@@ -241,7 +247,18 @@ class Agent:
                 weighted_probs = advantage[batch] * prob_ratio
                 weighted_clipped_probs = T.clamp(prob_ratio, 1-self.policy_clip,
                         1+self.policy_clip)*advantage[batch]
-                actor_loss = -T.min(weighted_probs, weighted_clipped_probs).mean()
+                policy_loss = -T.min(weighted_probs, weighted_clipped_probs).mean()
+
+                term_prob = self.option_critic.get_terminations(states[batch])[:,options[batch]]
+                termination_loss = term_prob*(advantage[batch]+term_costs[batch])
+                termination_loss = termination_loss.mean()
+
+                option_dist = self.option_critic.get_option_dist(states[batch])
+                option_logp = option_dist.log_prob(options[batch])
+                option_loss = -option_logp*advantage[batch]
+                option_loss = option_loss.mean()
+
+                actor_loss = policy_loss + option_loss + termination_loss
 
                 returns = advantage[batch] + values[batch]
                 critic_loss = (returns-critic_value)**2
@@ -249,10 +266,8 @@ class Agent:
 
                 total_loss = actor_loss + 0.5*critic_loss
                 self.option_critic.optimizer.zero_grad()
-                #self.critic.optimizer.zero_grad()
                 total_loss.backward()
                 self.option_critic.optimizer.step()
-                #self.critic.optimizer.step()
 
         self.memory.clear_memory()
 
