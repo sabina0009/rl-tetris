@@ -4,6 +4,7 @@ import torch as T
 import torch.nn as nn
 import torch.optim as optim
 from torch.distributions import Categorical, Bernoulli
+from utils import to_tensor
 
 class PPOMemory:
     def __init__(self, batch_size):
@@ -88,7 +89,7 @@ class OptionCriticNetwork(nn.Module):
         self.to(self.device)
 
     def get_state(self, observation):
-        obs = T.tensor(observation).detach().to(self.device)
+        obs = to_tensor(obs)
         state = self.features(obs)
         return state
     
@@ -105,7 +106,7 @@ class OptionCriticNetwork(nn.Module):
         return int(option)
 
     def get_value(self, observation):
-        obs = T.tensor(observation).detach().to(self.device)
+        obs = to_tensor(obs)
         return self.critic(obs)
 
     def predict_option_termination(self, state, current_option):
@@ -236,6 +237,8 @@ class Agent:
                 options = T.tensor(option_arr[batch]).to(self.option_critic.device)
                 actions = T.tensor(action_arr[batch]).to(self.option_critic.device)
                 term_costs = T.tensor(term_costs_arr[batch]).to(self.option_critic.device)
+                dones = T.tensor(dones_arr[batch]).to(self.option_critic.device)
+                dones = dones.long()
                 dist = self.option_critic.get_action_dist(states, options)
                 critic_value = self.option_critic.get_value(obs)
 
@@ -249,12 +252,12 @@ class Agent:
                         1+self.policy_clip)*advantage[batch]
                 policy_loss = -T.min(weighted_probs, weighted_clipped_probs).mean()
 
-                term_prob = self.option_critic.get_terminations(states[batch])[:,options[batch]]
-                termination_loss = term_prob*(advantage[batch]+term_costs[batch])
+                term_prob = self.option_critic.get_terminations(states[batch])[:,options[batch]].detach()
+                termination_loss = term_prob*(advantage[batch]+term_costs[batch])*(1-dones[batch])
                 termination_loss = termination_loss.mean()
 
                 option_dist = self.option_critic.get_option_dist(states[batch])
-                option_logp = option_dist.log_prob(options[batch])
+                option_logp = option_dist.log_prob(options[batch]).detach()
                 option_loss = -option_logp*advantage[batch]
                 option_loss = option_loss.mean()
 
