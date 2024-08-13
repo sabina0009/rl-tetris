@@ -26,6 +26,7 @@ def plot_multiple_learning_curves(figure_file, *results_files):
     plt.savefig(figure_file)
 
 def to_tensor(obs):
-    obs = np.asarray(obs)
-    obs = torch.from_numpy(obs).float()
+    if not torch.is_tensor(obs):
+        obs = np.asarray(obs)
+        obs = torch.from_numpy(obs).float()
     return obs

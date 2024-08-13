@@ -4,6 +4,7 @@ import torch as T
 import torch.nn as nn
 import torch.optim as optim
 from torch.distributions import Categorical, Bernoulli
+from utils import to_tensor
 
 class PPOMemory:
     def __init__(self, batch_size):
@@ -14,7 +15,6 @@ class PPOMemory:
         self.actions = []
         self.rewards = []
         self.dones = []
-        self.term_costs = []
 
         self.batch_size = batch_size
 
@@ -32,10 +32,9 @@ class PPOMemory:
                 np.array(self.vals),\
                 np.array(self.rewards),\
                 np.array(self.dones),\
-                np.array(self.term_costs),\
                 batches
 
-    def store_memory(self, state, option, action, probs, vals, reward, done, term_cost):
+    def store_memory(self, state, option, action, probs, vals, reward, done):
         self.states.append(state)
         self.options.append(option)
         self.actions.append(action)
@@ -43,7 +42,6 @@ class PPOMemory:
         self.vals.append(vals)
         self.rewards.append(reward)
         self.dones.append(done)
-        self.term_costs.append(term_cost)
 
     def clear_memory(self):
         self.states = []
@@ -53,7 +51,7 @@ class PPOMemory:
         self.rewards = []
         self.dones = []
         self.vals = []
-        self.term_costs = []
+
 
 class OptionCriticNetwork(nn.Module):
     def __init__(self, n_options, n_actions, input_dims, alpha,
@@ -88,7 +86,7 @@ class OptionCriticNetwork(nn.Module):
         self.to(self.device)
 
     def get_state(self, observation):
-        obs = T.tensor(observation).detach().to(self.device)
+        obs = to_tensor(observation).to(self.device)
         state = self.features(obs)
         return state
     
@@ -105,7 +103,7 @@ class OptionCriticNetwork(nn.Module):
         return int(option)
 
     def get_value(self, observation):
-        obs = T.tensor(observation).detach().to(self.device)
+        obs = to_tensor(observation).to(self.device)
         return self.critic(obs)
 
     def predict_option_termination(self, state, current_option):
@@ -171,20 +169,21 @@ class CriticNetwork(nn.Module):
 
 class Agent:
     def __init__(self, n_options, n_actions, input_dims, gamma=0.99, alpha=0.0003, gae_lambda=0.95,
-            policy_clip=0.2, batch_size=64, n_epochs=10, eta = 0):
+            policy_clip=0.2, batch_size=64, n_epochs=10, eta = 0, entropy_reg = 0):
         self.gamma = gamma
         self.policy_clip = policy_clip
         self.n_epochs = n_epochs
         self.gae_lambda = gae_lambda
         self.eta = eta
+        self.entropy_reg = entropy_reg
 
         self.option_critic = OptionCriticNetwork(n_options, n_actions, input_dims, alpha)
         #self.actor = ActorNetwork(n_actions, input_dims, alpha)
         #self.critic = CriticNetwork(input_dims, alpha)
         self.memory = PPOMemory(batch_size)
        
-    def remember(self, state, option, action, probs, vals, reward, done, termination_cost):
-        self.memory.store_memory(state, option, action, probs, vals, reward, done, termination_cost)
+    def remember(self, state, option, action, probs, vals, reward, done):
+        self.memory.store_memory(state, option, action, probs, vals, reward, done)
 
     def save_models(self):
         print('... saving models ...')
@@ -200,6 +199,7 @@ class Agent:
         state = self.option_critic.get_state(observation)
 
         dist = self.option_critic.get_action_dist(state, option)
+        entropy = dist.entropy()
         value = self.option_critic.get_value(observation)
         action = dist.sample()
 
@@ -207,12 +207,12 @@ class Agent:
         action = T.squeeze(action).item()
         value = T.squeeze(value).item()
 
-        return action, probs, value
+        return action, probs, value, entropy
 
-    def learn(self):
+    def learn(self, termination_cost, entropy):
         for _ in range(self.n_epochs):
             obs_arr, option_arr, action_arr, old_prob_arr, vals_arr,\
-            reward_arr, dones_arr, term_costs_arr, batches = \
+            reward_arr, dones_arr, batches = \
                     self.memory.generate_batches()
 
             values = vals_arr
@@ -235,7 +235,8 @@ class Agent:
                 old_probs = T.tensor(old_prob_arr[batch]).to(self.option_critic.device)
                 options = T.tensor(option_arr[batch]).to(self.option_critic.device)
                 actions = T.tensor(action_arr[batch]).to(self.option_critic.device)
-                term_costs = T.tensor(term_costs_arr[batch]).to(self.option_critic.device)
+                dones = T.tensor(dones_arr[batch]).to(self.option_critic.device)
+                dones = dones.long()
                 dist = self.option_critic.get_action_dist(states, options)
                 critic_value = self.option_critic.get_value(obs)
 
@@ -248,13 +249,14 @@ class Agent:
                 weighted_clipped_probs = T.clamp(prob_ratio, 1-self.policy_clip,
                         1+self.policy_clip)*advantage[batch]
                 policy_loss = -T.min(weighted_probs, weighted_clipped_probs).mean()
+                policy_loss -= self.entropy_reg * entropy.detach()
 
-                term_prob = self.option_critic.get_terminations(states[batch])[:,options[batch]]
-                termination_loss = term_prob*(advantage[batch]+term_costs[batch])
+                term_prob = self.option_critic.get_terminations(states[batch])[:,options[batch]].detach()
+                termination_loss = term_prob*(advantage[batch]+termination_cost)*(1-dones[batch])
                 termination_loss = termination_loss.mean()
 
                 option_dist = self.option_critic.get_option_dist(states[batch])
-                option_logp = option_dist.log_prob(options[batch])
+                option_logp = option_dist.log_prob(options[batch]).detach()
                 option_loss = -option_logp*advantage[batch]
                 option_loss = option_loss.mean()
 

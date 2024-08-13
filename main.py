@@ -21,11 +21,11 @@ if __name__ == '__main__':
     n_options = 2
     alpha = 0.0003
     agent = Agent(n_options = n_options, n_actions=env.action_space.n, batch_size=batch_size, 
-                    alpha=alpha, n_epochs=n_epochs, eta = 0,
+                    alpha=alpha, n_epochs=n_epochs, eta = 0, entropy_reg=0.1,
                     input_dims=[env.observation_space.shape[0]*env.observation_space.shape[1]])
     #n_games = 10000
-    max_steps = 500000
-    filename = 'tetris-optioncriticV4'
+    max_steps = 100000
+    filename = 'tetris-optioncritic-entropyreg'
     figure_file = f'plots/{filename}.png'
     best_score = env.reward_range[0]
     score_history = []
@@ -61,7 +61,7 @@ if __name__ == '__main__':
             else:
                 termination_cost = 0
 
-            action, prob, val = agent.choose_action(observation, current_option)
+            action, prob, val, entropy = agent.choose_action(observation, current_option)
 
             observation_, reward, terminated, truncated, info = env.step(action)
             done = terminated or truncated
@@ -70,10 +70,10 @@ if __name__ == '__main__':
             curr_op_len += 1
             reward = reward - termination_cost
             score += reward
-            agent.remember(observation, current_option, action, prob, val, reward, done, termination_cost)
+            agent.remember(observation, current_option, action, prob, val, reward, done)
 
             if n_steps % N == 0:
-                agent.learn()
+                agent.learn(termination_cost, entropy)
                 learn_iters += 1
 
             observation = observation_
