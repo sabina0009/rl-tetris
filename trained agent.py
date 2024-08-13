@@ -5,7 +5,7 @@ from ppo_torch import Agent
 import time
 from utils import to_tensor
     
-env = gym.make('SimpleTetris-v0', reward_step = True)
+env = gym.make('SimpleTetris-v0', reward_step = True, height = 8, width = 4)
 N = 20
 batch_size = 64
 n_epochs = 4
