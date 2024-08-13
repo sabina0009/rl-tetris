@@ -24,8 +24,8 @@ if __name__ == '__main__':
                     alpha=alpha, n_epochs=n_epochs, eta = 0,
                     input_dims=[env.observation_space.shape[0]*env.observation_space.shape[1]])
     #n_games = 10000
-    max_steps = 100000
-    filename = 'tetris-fullsize'
+    max_steps = 500000
+    filename = 'tetris-optioncriticV4'
     figure_file = f'plots/{filename}.png'
     best_score = env.reward_range[0]
     score_history = []
