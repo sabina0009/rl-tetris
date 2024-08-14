@@ -1,4 +1,4 @@
-import gymnasium as gym
+import gym
 import gym_simpletetris
 import numpy as np
 from ppo_torch import Agent

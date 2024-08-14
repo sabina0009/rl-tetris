@@ -169,7 +169,7 @@ class CriticNetwork(nn.Module):
 
 class Agent:
     def __init__(self, n_options, n_actions, input_dims, gamma=0.99, alpha=0.0003, gae_lambda=0.95,
-            policy_clip=0.2, batch_size=64, n_epochs=10, eta = 0, entropy_reg = 0):
+            policy_clip=0.2, batch_size=64, n_epochs=10, eta = 0, entropy_reg = 0.01):
         self.gamma = gamma
         self.policy_clip = policy_clip
         self.n_epochs = n_epochs
@@ -249,7 +249,7 @@ class Agent:
                 weighted_clipped_probs = T.clamp(prob_ratio, 1-self.policy_clip,
                         1+self.policy_clip)*advantage[batch]
                 policy_loss = -T.min(weighted_probs, weighted_clipped_probs).mean()
-                policy_loss -= self.entropy_reg * entropy.detach()
+                policy_loss -= self.entropy_reg * entropy.mean().detach()
 
                 term_prob = self.option_critic.get_terminations(states[batch])[:,options[batch]].detach()
                 termination_loss = term_prob*(advantage[batch]+termination_cost)*(1-dones[batch])
