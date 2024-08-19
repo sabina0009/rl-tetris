@@ -44,12 +44,6 @@ class ReplayMemory:
         return np.array(self.states), np.array(self.actions), np.array(self.next_states), \
             np.array(self.rewards), np.array(self.dones), batch
 
-    def clear_memory(self):
-        self.states = []
-        self.actions = []
-        self.next_states = []
-        self.rewards = []
-        self.dones = []
     
 class DeepNeuralNetwork(nn.Module):
     def __init__(self, n_actions, input_dims, alpha,
@@ -151,8 +145,6 @@ class Agent:
         loss = self.policy_network.loss(q_target, q_eval).to(self.policy_network.device)
         loss.backward()
         self.policy_network.optimizer.step()
-
-        self.memory.clear_memory()
 
 
 
