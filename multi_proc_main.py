@@ -2,7 +2,7 @@
 import gymnasium as gym
 import gym_simpletetris
 import numpy as np
-from ppo_torch import Agent
+from dqn_torch import Agent
 from utils import plot_learning_curve
 import time
 
