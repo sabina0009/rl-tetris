@@ -45,10 +45,10 @@ class ReplayMemory:
             np.array(self.rewards), np.array(self.dones), batch
 
     
-class DeepNeuralNetwork(nn.Module):
+class DeepQNetwork(nn.Module):
     def __init__(self, n_actions, input_dims, alpha,
             fc1_dims=64, fc2_dims=64, chkpt_dir='tmp/dqn'):
-        super(DeepNeuralNetwork, self).__init__()
+        super(DeepQNetwork, self).__init__()
 
         self.checkpoint_file = os.path.join(chkpt_dir, 'nn_torch_dqn')
         self.nn = nn.Sequential(
@@ -88,7 +88,8 @@ class Agent:
         self.n_actions = n_actions
         self.action_space = [i for i in range(n_actions)]
 
-        self.policy_network = DeepNeuralNetwork(n_actions, input_dims, alpha)
+        self.policy_network = DeepQNetwork(n_actions, input_dims, alpha)
+        self.target_network = DeepQNetwork(n_actions, input_dims, alpha)
         self.memory = ReplayMemory(10000)
        
     def remember(self, state, action, next_state, reward, done):
@@ -146,5 +147,13 @@ class Agent:
         loss.backward()
         self.policy_network.optimizer.step()
 
+    def update_target_policy(self):
+        target_net_state_dict = self.target_network.state_dict()
+        policy_net_state_dict = self.policy_network.state_dict()
 
+        for key in policy_net_state_dict:
+            target_net_state_dict[key] = policy_net_state_dict[key]*self.tau \
+                + target_net_state_dict[key]*(1-self.tau)
+        
+        self.target_network.load_state_dict(target_net_state_dict)
 
