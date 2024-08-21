@@ -99,7 +99,6 @@ class Agent:
         print('... saving models ...')
         self.policy_network.save_checkpoint()
 
-
     def load_models(self):
         print('... loading models ...')
         self.policy_network.load_checkpoint()
@@ -113,7 +112,8 @@ class Agent:
 
     def choose_action(self, observation):
         sample = random.random()
-        state = T.tensor([observation]).to(self.policy_network.device)
+        obs = np.asarray([observation])
+        state = T.tensor(obs).to(self.policy_network.device)
         if sample > self.epsilon:
             with T.no_grad():
                 actions = self.policy_network.forward(state)
@@ -138,7 +138,7 @@ class Agent:
         dones = dones.long()
 
         q_eval = self.policy_network.forward(states)[batch_index, actions]
-        q_next = self.policy_network.forward(next_states)
+        q_next = self.target_network.forward(next_states)
 
         q_target = rewards + self.gamma * T.max(q_next, dim=1)[0] * (1 - dones)
 
@@ -148,6 +148,7 @@ class Agent:
         self.policy_network.optimizer.step()
 
     def update_target_policy(self):
+        """
         target_net_state_dict = self.target_network.state_dict()
         policy_net_state_dict = self.policy_network.state_dict()
 
@@ -156,4 +157,6 @@ class Agent:
                 + target_net_state_dict[key]*(1-self.tau)
         
         self.target_network.load_state_dict(target_net_state_dict)
+        """
+        self.target_network.load_state_dict(self.policy_network.state_dict())
 
