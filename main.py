@@ -15,7 +15,7 @@ if __name__ == '__main__':
                     input_dims=[env.observation_space.shape[0] * env.observation_space.shape[1]])
     #n_games = 1000
     max_steps = 100000
-    filename = 'tetris-dqn'
+    filename = 'tetris-dqn2'
     figure_file = f'plots/{filename}.png'
     best_score = env.reward_range[0]
     score_history = []
