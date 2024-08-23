@@ -78,7 +78,7 @@ class OptionCriticNetwork(nn.Module):
                 nn.ReLU(),
                 nn.Linear(fc1_dims, fc2_dims),
                 nn.ReLU(),
-                nn.Linear(fc2_dims, 1)
+                nn.Linear(fc2_dims, n_options)
         )
 
         self.optimizer = optim.Adam(self.parameters(), lr=alpha)
@@ -102,9 +102,18 @@ class OptionCriticNetwork(nn.Module):
 
         return int(option)
 
-    def get_value(self, observation):
+    def get_value(self, observation, option):
         obs = to_tensor(observation).to(self.device)
-        return self.critic(obs)
+        options = to_tensor(option).long().to(self.device)
+        if T.Tensor.dim(obs) <= 1:
+            obs = obs.unsqueeze(0)
+            options = options.unsqueeze(0)
+        n_obs = len(obs[:])
+        values = np.zeros(n_obs)
+        for i in range(n_obs):
+            q_vals = self.critic(obs)
+            values = q_vals[:, options[i].item()]
+        return values
 
     def predict_option_termination(self, state, current_option):
         termination = self.terminations(state)[current_option].sigmoid()
@@ -122,50 +131,12 @@ class OptionCriticNetwork(nn.Module):
 
         return action_dist
     
-    """
-    def forward(self, state):
-        dist = self.actor(state)
-        dist = Categorical(dist)
-        
-        return dist
-    """
-        
     def save_checkpoint(self):
         T.save(self.state_dict(), self.checkpoint_file)
 
     def load_checkpoint(self):
         self.load_state_dict(T.load(self.checkpoint_file))
 
-"""
-class CriticNetwork(nn.Module):
-    def __init__(self, input_dims, alpha, fc1_dims=64, fc2_dims=64,
-            chkpt_dir='tmp/ppo'):
-        super(CriticNetwork, self).__init__()
-
-        self.checkpoint_file = os.path.join(chkpt_dir, 'critic_torch_ppo')
-        self.critic = nn.Sequential(
-                nn.Linear(*input_dims, fc1_dims),
-                nn.ReLU(),
-                nn.Linear(fc1_dims, fc2_dims),
-                nn.ReLU(),
-                nn.Linear(fc2_dims, 1)
-        )
-
-        self.optimizer = optim.Adam(self.parameters(), lr=alpha)
-        self.device = T.device('cpu')
-        self.to(self.device)
-
-    def forward(self, state):
-        value = self.critic(state)
-
-        return value
-
-    def save_checkpoint(self):
-        T.save(self.state_dict(), self.checkpoint_file)
-
-    def load_checkpoint(self):
-        self.load_state_dict(T.load(self.checkpoint_file))
-"""
 
 class Agent:
     def __init__(self, n_options, n_actions, input_dims, gamma=0.99, alpha=0.0003, gae_lambda=0.95,
@@ -199,17 +170,16 @@ class Agent:
         state = self.option_critic.get_state(observation)
 
         dist = self.option_critic.get_action_dist(state, option)
-        entropy = dist.entropy()
-        value = self.option_critic.get_value(observation)
+        value = self.option_critic.get_value(observation, option)
         action = dist.sample()
 
         probs = T.squeeze(dist.log_prob(action)).item()
         action = T.squeeze(action).item()
         value = T.squeeze(value).item()
 
-        return action, probs, value, entropy
+        return action, probs, value
 
-    def learn(self, termination_cost, entropy):
+    def learn(self, termination_cost):
         for _ in range(self.n_epochs):
             obs_arr, option_arr, action_arr, old_prob_arr, vals_arr,\
             reward_arr, dones_arr, batches = \
@@ -238,7 +208,7 @@ class Agent:
                 dones = T.tensor(dones_arr[batch]).to(self.option_critic.device)
                 dones = dones.long()
                 dist = self.option_critic.get_action_dist(states, options)
-                critic_value = self.option_critic.get_value(obs)
+                critic_value = self.option_critic.get_value(obs, options)
 
                 critic_value = T.squeeze(critic_value)
 
@@ -249,6 +219,8 @@ class Agent:
                 weighted_clipped_probs = T.clamp(prob_ratio, 1-self.policy_clip,
                         1+self.policy_clip)*advantage[batch]
                 policy_loss = -T.min(weighted_probs, weighted_clipped_probs).mean()
+
+                entropy = dist.entropy()
                 policy_loss -= self.entropy_reg * entropy.mean().detach()
 
                 term_prob = self.option_critic.get_terminations(states[batch])[:,options[batch]].detach()
@@ -266,7 +238,7 @@ class Agent:
                 critic_loss = (returns-critic_value)**2
                 critic_loss = critic_loss.mean()
 
-                total_loss = actor_loss + 0.5*critic_loss
+                total_loss = actor_loss + critic_loss
                 self.option_critic.optimizer.zero_grad()
                 total_loss.backward()
                 self.option_critic.optimizer.step()

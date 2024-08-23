@@ -1,4 +1,4 @@
-import gym
+import gymnasium as gym
 import gym_simpletetris
 import numpy as np
 from ppo_torch import Agent
@@ -25,7 +25,7 @@ if __name__ == '__main__':
                     input_dims=[env.observation_space.shape[0]*env.observation_space.shape[1]])
     #n_games = 10000
     max_steps = 100000
-    filename = 'tetris-optioncritic-entropyreg'
+    filename = 'tetris-optioncritic-v6'
     figure_file = f'plots/{filename}.png'
     best_score = env.reward_range[0]
     score_history = []
@@ -61,7 +61,7 @@ if __name__ == '__main__':
             else:
                 termination_cost = 0
 
-            action, prob, val, entropy = agent.choose_action(observation, current_option)
+            action, prob, val = agent.choose_action(observation, current_option)
 
             observation_, reward, terminated, truncated, info = env.step(action)
             done = terminated or truncated
@@ -73,7 +73,7 @@ if __name__ == '__main__':
             agent.remember(observation, current_option, action, prob, val, reward, done)
 
             if n_steps % N == 0:
-                agent.learn(termination_cost, entropy)
+                agent.learn(termination_cost)
                 learn_iters += 1
 
             observation = observation_
