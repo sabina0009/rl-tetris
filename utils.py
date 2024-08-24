@@ -23,3 +23,24 @@ def plot_multiple_learning_curves(figure_file, *results_files):
         plt.legend()
         j += 1
     plt.savefig(figure_file)
+
+def plot_average_learning_curve(filename, runs):
+    results_files = [f'results\{filename}{i}.txt' for i in range(runs)]
+    scores = []
+    for i in range(runs):
+        score_history = np.loadtxt(results_files[i], dtype=int)
+        scores.append(score_history)
+    run_lengths = [len(score_history) for score_history in scores]
+    min_len = min(run_lengths)
+    x = [n for n in range(min_len)]
+    avg_scores = []
+    for i in range(min_len):
+        avg = sum([scores[j][i] for j in range(runs)]) / runs
+        avg_scores.append(avg)
+    np.savetxt(f'results/{filename}-average.txt', avg_scores, fmt='%d')
+    running_avg = np.zeros(len(avg_scores))
+    for i in range(len(running_avg)):
+        running_avg[i] = np.mean(avg_scores[max(0, i-100):(i+1)])
+    plt.plot(x, running_avg)
+    plt.title(f'{filename} average of {runs} runs')
+    plt.savefig(f'plots\{filename}-average.png')

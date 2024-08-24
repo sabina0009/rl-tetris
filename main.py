@@ -9,7 +9,6 @@ if __name__ == '__main__':
     env = gym.make('SimpleTetris-v0', reward_step=True)
     N = 20
     batch_size = 64
-    n_epochs = 4
     alpha = 0.0003
     upd_freq =200
     agent = Agent(n_actions=env.action_space.n, batch_size=batch_size, alpha=alpha,
