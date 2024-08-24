@@ -1,5 +1,4 @@
 import numpy as np
-import argparse
 import torch
 from copy import deepcopy
 
@@ -8,27 +7,30 @@ from option_critic import critic_loss as critic_loss_fn
 from option_critic import actor_loss as actor_loss_fn
 
 from experience_replay import ReplayBuffer
-from utils import make_env, to_tensor
-from logger import Logger
+from utils import make_env, to_tensor, save_models
 
-from utils import plot_learning_curve
+from utils import plot_learning_curve, plot_average_learning_curve
+import time
 
-def run():
+filename='tetris-option-critic'
+
+def run(process_num, score_history):
     env_name = 'SimpleTetris-v0'
     env, is_atari = make_env(env_name)
     option_critic = OptionCriticConv if is_atari else OptionCriticFeatures
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    score_history = []
-    filename='tetris-option-critic'
 
     learning_rate = 0.0005
     max_history = 10000
-    max_steps = 100000
+    max_steps = 1000
     max_steps_ep = 10000
     num_options = 2
     batch_size = 32
     update_frequency = 4
     freeze_interval = 200
+
+    best_score = env.reward_range[0]
+    avg_score = 0
     
     gamma = 0.99
     termination_reg = 0.01
@@ -56,9 +58,11 @@ def run():
     #env.seed(args.seed)
 
     buffer = ReplayBuffer(capacity=max_history, seed=seed)
-    logger = Logger(logdir='tmp', run_name=f"{OptionCriticFeatures.__name__}-{env_name}")
 
     steps = 0 
+    episode = 0
+    start_time = time.time()
+
     while steps < max_steps:
 
         rewards = 0 ; option_lengths = {opt:[] for opt in range(num_options)}
@@ -115,16 +119,44 @@ def run():
             curr_op_len += 1
             obs = next_obs
 
-            logger.log_data(steps, actor_loss, critic_loss, entropy.item(), epsilon)
+        score_history[process_num].append(rewards)
+        avg_score = np.mean(score_history[process_num][-100:])
+        episode += 1
 
-        logger.log_episode(steps, rewards, option_lengths, ep_steps, epsilon)
-        score_history.append(rewards)
-        avg_score = np.mean(score_history[-100:])
-        print(f'average score: {avg_score:.1f}')
+        if avg_score > best_score:
+            best_score = avg_score
+            save_models()
+
+        time_elapsed = time.time() - start_time
+        hours = time_elapsed // 3600
+        time_elapsed = time_elapsed % 3600
+        minutes = time_elapsed // 60
+        seconds = time_elapsed % 60
+
+        print('process_num', process_num, ' | episode', episode, ' | score %.1f' % rewards, ' | avg score %.1f' % avg_score,
+                ' | time_steps', steps, ' | runtime %d:%d:%.1f' % (hours, minutes, seconds))
+
     
-        np.savetxt(f'results/{filename}.txt', score_history, fmt='%d')
-        x = [i+1 for i in range(len(score_history))]
-        plot_learning_curve(x, score_history, f'plots/{filename}.png')
+    np.savetxt(f'results/{filename}{process_num}.txt', score_history[process_num], fmt='%d')
+    x = [i+1 for i in range(len(score_history[process_num]))]
+    plot_learning_curve(x, score_history[process_num], f'plots/{filename}{process_num}.png')
 
-if __name__=="__main__":
-    run()
+    pass
+
+threads = 5
+score_history = [[] for i in range(threads)]
+import torch.multiprocessing as mproc
+import threading
+if __name__ == '__main__':
+    #share the network weights between the processes
+    processes = []
+    UPDATE_EVENT, ROLLING_EVENT = threading.Event(), threading.Event()
+    ROLLING_EVENT.set()
+    for process_num in range(threads):
+            p = mproc.Process(target=run, args=(process_num, score_history))
+            p.start()
+            processes.append(p)
+    for p in processes:
+            p.join()
+
+    plot_average_learning_curve(filename, threads)
