@@ -95,7 +95,7 @@ class Agent:
         self.memory.store_memory(state, action, next_state, reward, done)
 
     def save_models(self):
-        print('... saving models ...')
+        #print('... saving models ...')
         self.policy_network.save_checkpoint()
 
 
@@ -112,7 +112,7 @@ class Agent:
 
     def choose_action(self, observation):
         sample = random.random()
-        state = T.tensor([observation]).to(self.policy_network.device)
+        state = T.tensor(observation).unsqueeze(0).to(self.policy_network.device)
         if sample > self.epsilon:
             with T.no_grad():
                 actions = self.policy_network.forward(state)
