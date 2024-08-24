@@ -83,7 +83,8 @@ def plot_multiple_learning_curves(figure_file, *results_files):
     plt.savefig(figure_file)
 
 def plot_average_learning_curve(filename, runs):
-    results_files = [f'results/{filename}{i}.txt' for i in range(runs)]
+    print(f'... plotting average of {runs} runs ...')
+    results_files = [f'results/{filename}-{i}.txt' for i in range(runs)]
     scores = []
     for i in range(runs):
         score_history = np.loadtxt(results_files[i], dtype=int)
