@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.nn as nn
 from torch.distributions import Categorical, Bernoulli
@@ -19,7 +20,8 @@ class OptionCriticConv(nn.Module):
                 eps_decay=int(1e6),
                 eps_test=0.05,
                 device='cpu',
-                testing=False):
+                testing=False,
+                chkpt_dir = 'tmp/oc'):
 
         super(OptionCriticConv, self).__init__()
 
@@ -29,6 +31,8 @@ class OptionCriticConv(nn.Module):
         self.magic_number = 7 * 7 * 64
         self.device = device
         self.testing = testing
+
+        self.chkpt_dir = chkpt_dir
 
         self.temperature = temperature
         self.eps_min   = eps_min
@@ -101,6 +105,14 @@ class OptionCriticConv(nn.Module):
         else:
             eps = self.eps_test
         return eps
+    
+    def save_checkpoint(self, name):
+        checkpoint_file = os.path.join(self.chkpt_dir, name)
+        torch.save(self.state_dict(), checkpoint_file)
+    
+    def load_checkpoint(self, name):
+        checkpoint_file = os.path.join(self.chkpt_dir, name)
+        self.load_state_dict(torch.load(self.checkpoint_file))
 
 
 class OptionCriticFeatures(nn.Module):
@@ -117,7 +129,8 @@ class OptionCriticFeatures(nn.Module):
                 testing=False,
                 gamma = 0.99,
                 termination_reg = 0.01, 
-                entropy_reg = 0.01):
+                entropy_reg = 0.01,
+                chkpt_dir = 'tmp\oc'):
 
         super(OptionCriticFeatures, self).__init__()
 
@@ -126,6 +139,8 @@ class OptionCriticFeatures(nn.Module):
         self.num_options = num_options
         self.device = device
         self.testing = testing
+
+        self.chkpt_dir = chkpt_dir
 
         self.temperature = temperature
         self.eps_min   = eps_min
@@ -196,6 +211,14 @@ class OptionCriticFeatures(nn.Module):
         else:
             eps = self.eps_test
         return eps
+    
+    def save_checkpoint(self, name):
+        checkpoint_file = os.path.join(self.chkpt_dir, name)
+        torch.save(self.state_dict(), checkpoint_file)
+    
+    def load_checkpoint(self, name):
+        checkpoint_file = os.path.join(self.chkpt_dir, name)
+        self.load_state_dict(torch.load(self.checkpoint_file))
 
 
 def critic_loss(model, model_prime, data_batch, gamma):

@@ -83,7 +83,7 @@ def plot_multiple_learning_curves(figure_file, *results_files):
     plt.savefig(figure_file)
 
 def plot_average_learning_curve(filename, runs):
-    results_files = [f'results\{filename}{i}.txt' for i in range(runs)]
+    results_files = [f'results/{filename}{i}.txt' for i in range(runs)]
     scores = []
     for i in range(runs):
         score_history = np.loadtxt(results_files[i], dtype=int)
@@ -101,9 +101,16 @@ def plot_average_learning_curve(filename, runs):
         running_avg[i] = np.mean(avg_scores[max(0, i-100):(i+1)])
     plt.plot(x, running_avg)
     plt.title(f'{filename} average of {runs} runs')
-    plt.savefig(f'plots\{filename}-average.png')
+    plt.savefig(f'plots/{filename}-average.png')
 
-def save_models():
-    pass
+def save_models(option_critic, option_critic_prime, process_num):
+    print('... saving models ...')
+    option_critic.save_checkpoint(f'option_critic_{process_num}')
+    option_critic_prime.save_checkpoint(f'option_critic_prime_{process_num}')
+
+def load_models(option_critic, option_critic_prime, process_num):
+        print('... loading models ...')
+        option_critic.load_checkpoint(f'option_critic {process_num}')
+        option_critic_prime.load_checkpoint(f'option_critic_prime_{process_num}')
 
 

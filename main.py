@@ -22,7 +22,7 @@ def run(process_num, score_history):
 
     learning_rate = 0.0005
     max_history = 10000
-    max_steps = 1000
+    max_steps = 200000
     max_steps_ep = 10000
     num_options = 2
     batch_size = 32
@@ -125,7 +125,7 @@ def run(process_num, score_history):
 
         if avg_score > best_score:
             best_score = avg_score
-            save_models()
+            save_models(option_critic, option_critic_prime, process_num)
 
         time_elapsed = time.time() - start_time
         hours = time_elapsed // 3600
@@ -137,9 +137,9 @@ def run(process_num, score_history):
                 ' | time_steps', steps, ' | runtime %d:%d:%.1f' % (hours, minutes, seconds))
 
     
-    np.savetxt(f'results/{filename}{process_num}.txt', score_history[process_num], fmt='%d')
+    np.savetxt(f'results/{filename}-{process_num}.txt', score_history[process_num], fmt='%d')
     x = [i+1 for i in range(len(score_history[process_num]))]
-    plot_learning_curve(x, score_history[process_num], f'plots/{filename}{process_num}.png')
+    plot_learning_curve(x, score_history[process_num], f'plots/{filename}-{process_num}.png')
 
     pass
 
