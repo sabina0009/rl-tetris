@@ -6,7 +6,7 @@ from option_critic import OptionCriticFeatures, OptionCriticConv
 from option_critic import critic_loss as critic_loss_fn
 from option_critic import actor_loss as actor_loss_fn
 
-from experience_replay import ReplayBuffer
+from buffer import RolloutBuffer
 from utils import make_env, to_tensor, save_models
 
 from utils import plot_learning_curve, plot_average_learning_curve
@@ -22,12 +22,12 @@ def run(process_num, score_history):
 
     learning_rate = 0.0005
     max_history = 10000
-    max_steps = 10000
+    max_steps = 2048*200
     max_steps_ep = 10000
-    num_options = 2
-    batch_size = 3
-    N = 20
-    n_epochs = 4
+    num_options = 4
+    batch_size = 64
+    N = 2048
+    n_epochs = 10
 
     best_score = env.reward_range[0]
     avg_score = 0
@@ -57,7 +57,7 @@ def run(process_num, score_history):
     torch.manual_seed(seed)
     #env.seed(args.seed)
 
-    buffer = ReplayBuffer(capacity=max_history, seed=seed)
+    buffer = RolloutBuffer(capacity=max_history, seed=seed)
 
     steps = 0 
     episode = 0
@@ -154,7 +154,7 @@ def run(process_num, score_history):
 
         if avg_score > best_score:
             best_score = avg_score
-            option_critic.save_checkpoint(f'option_critic_{process_num}')
+            option_critic.save_checkpoint(f'{filename}-{process_num}')
 
         time_elapsed = time.time() - start_time
         hours = time_elapsed // 3600
@@ -172,7 +172,7 @@ def run(process_num, score_history):
 
     pass
 
-threads = 1
+threads = 5
 score_history = [[] for i in range(threads)]
 import torch.multiprocessing as mproc
 import threading

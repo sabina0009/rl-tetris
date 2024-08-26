@@ -241,10 +241,12 @@ class OptionCriticFeatures(nn.Module):
         return action.item(), logp.item(), value.item()
 
     def save_checkpoint(self, name):
+        print('... saving models ...')
         checkpoint_file = os.path.join(self.chkpt_dir, name)
         torch.save(self.state_dict(), checkpoint_file)
     
     def load_checkpoint(self, name):
+        print('...loading models ...')
         checkpoint_file = os.path.join(self.chkpt_dir, name)
         self.load_state_dict(torch.load(checkpoint_file))
 
