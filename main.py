@@ -5,18 +5,19 @@ from ppo_torch import Agent
 from utils import plot_learning_curve
 import time
 
+filename = 'tetris-separate-ac-networks'
+
 if __name__ == '__main__':
     env = gym.make('SimpleTetris-v0', reward_step=True)
     N = 20
     batch_size = 64
     n_epochs = 4
     alpha = 0.0003
-    agent = Agent(n_actions=env.action_space.n, batch_size=batch_size, 
+    agent = Agent(n_actions=env.action_space.n, filename=filename, batch_size=batch_size, 
                     alpha=alpha, n_epochs=n_epochs, 
                     input_dims=[env.observation_space.shape[0] * env.observation_space.shape[1]])
     #n_games = 1000
-    max_steps = 100000
-    filename = 'tetris-separate-ac-networks'
+    max_steps = 400000
     figure_file = f'plots/{filename}.png'
     best_score = env.reward_range[0]
     score_history = []

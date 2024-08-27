@@ -6,19 +6,19 @@ from ppo_torch import Agent
 from utils import plot_learning_curve, plot_average_learning_curve
 import time
 
-N = 20
-batch_size = 64
-n_epochs = 4
+N = 2048
+batch_size = 32
+n_epochs = 10
 alpha = 0.0003
 filename = 'tetris-PPO'
 
 def run_worker(process_num, score_history):
     env = gym.make('SimpleTetris-v0', reward_step=True)
-    agent = Agent(n_actions=env.action_space.n, batch_size=batch_size, 
+    agent = Agent(n_actions=env.action_space.n, filename=filename, batch_size=batch_size, 
                     alpha=alpha, n_epochs=n_epochs, 
                     input_dims=[env.observation_space.shape[0] * env.observation_space.shape[1]])
     #n_games = 1000
-    max_steps = 1000000
+    max_steps = 200*N
     figure_file = f'plots/{filename}{process_num}.png'
     best_score = env.reward_range[0]
     learn_iters = 0
@@ -62,10 +62,10 @@ def run_worker(process_num, score_history):
             print('process_num', process_num, 'episode', episode, 'score %.1f' % score, 'avg score %.1f' % avg_score,
                 'time_steps', n_steps, 'learning_steps', learn_iters, 'runtime %d:%d:%.1f' % (hours, minutes, seconds))
     
-    np.savetxt(f'results/{filename}{process_num}.txt', score_history[process_num], fmt='%d')
+            np.savetxt(f'results/{filename}{process_num}.txt', score_history[process_num], fmt='%d')
 
-    x = [i+1 for i in range(len(score_history[process_num]))]
-    plot_learning_curve(x, score_history[process_num], figure_file)
+            x = [i+1 for i in range(len(score_history[process_num]))]
+            plot_learning_curve(x, score_history[process_num], figure_file)
 
 
     pass
