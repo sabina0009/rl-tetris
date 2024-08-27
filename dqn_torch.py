@@ -148,7 +148,6 @@ class Agent:
         self.policy_network.optimizer.step()
 
     def update_target_policy(self):
-        """
         target_net_state_dict = self.target_network.state_dict()
         policy_net_state_dict = self.policy_network.state_dict()
 
@@ -157,6 +156,6 @@ class Agent:
                 + target_net_state_dict[key]*(1-self.tau)
         
         self.target_network.load_state_dict(target_net_state_dict)
-        """
-        self.target_network.load_state_dict(self.policy_network.state_dict())
+
+        #self.target_network.load_state_dict(self.policy_network.state_dict())
 

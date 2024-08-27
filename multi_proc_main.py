@@ -10,7 +10,7 @@ N = 20
 batch_size = 64
 alpha = 0.0003
 upd_freq =200
-filename = 'tetris-DQNtargetnet'
+filename = 'tetris-DQNtargetnet-soft-update'
 
 def run_worker(process_num, score_history):
     env = gym.make('SimpleTetris-v0', reward_step=True)
@@ -37,8 +37,7 @@ def run_worker(process_num, score_history):
             score += reward
             agent.remember(observation, action, observation_, reward, done)
             agent.learn()
-            if agent.num_steps % upd_freq == 0:
-                agent.update_target_policy()
+            agent.update_target_policy()
             observation = observation_
         score_history[process_num].append(score)
         avg_score = np.mean(score_history[process_num][-100:])
