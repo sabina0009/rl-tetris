@@ -12,7 +12,7 @@ from utils import make_env, to_tensor, save_models
 from utils import plot_learning_curve, plot_average_learning_curve
 import time
 
-filename='tetris-options=4'
+filename='tetris-options=8'
 
 def run(process_num, score_history):
     env_name = 'SimpleTetris-v0'
@@ -125,7 +125,7 @@ def run(process_num, score_history):
 
         if avg_score > best_score:
             best_score = avg_score
-            save_models(option_critic, option_critic_prime, process_num)
+            save_models(option_critic, option_critic_prime, process_num, filename)
 
         time_elapsed = time.time() - start_time
         hours = time_elapsed // 3600
