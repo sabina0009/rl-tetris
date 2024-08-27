@@ -43,7 +43,7 @@ def make_env(env_name):
         return Fourrooms(), False
     
     if env_name == 'SimpleTetris-v0':
-        env = gymnasium.make('SimpleTetris-v0', reward_step=True)
+        env = gymnasium.make('SimpleTetris-v0', height=8, width=4)
         return env, False 
 
     env = gym.make(env_name)

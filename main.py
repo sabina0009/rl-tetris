@@ -12,9 +12,9 @@ from utils import make_env, to_tensor, save_models
 from utils import plot_learning_curve, plot_average_learning_curve
 import time
 
-filename='tetris-options=8'
+filename='tetris-options=2-8x4'
 
-def run(process_num, score_history):
+def run(process_num, score_history, lines_cleared):
     env_name = 'SimpleTetris-v0'
     env, is_atari = make_env(env_name)
     option_critic = OptionCriticConv if is_atari else OptionCriticFeatures
@@ -37,7 +37,7 @@ def run(process_num, score_history):
     entropy_reg = 0.01
 
     option_critic = option_critic(
-        in_features=env.observation_space.shape[0] if env_name != 'SimpleTetris-v0' else 200,
+        in_features=env.observation_space.shape[0] if env_name != 'SimpleTetris-v0' else 8*4,
         num_actions=env.action_space.n,
         num_options=num_options,
         temperature=1.0,
@@ -67,7 +67,7 @@ def run(process_num, score_history):
 
         rewards = 0 ; option_lengths = {opt:[] for opt in range(num_options)}
 
-        obs, _   = env.reset()
+        obs, info   = env.reset()
         if env_name == 'SimpleTetris-v0':
             obs = obs.flatten()
         state = option_critic.get_state(to_tensor(obs))
@@ -85,7 +85,7 @@ def run(process_num, score_history):
     
             action, logp, entropy = option_critic.get_action(state, current_option)
 
-            next_obs, reward, terminated, truncated, _ = env.step(action)
+            next_obs, reward, terminated, truncated, info = env.step(action)
             done = terminated or truncated
             if env_name == 'SimpleTetris-v0':
                 next_obs = next_obs.flatten()
@@ -120,6 +120,7 @@ def run(process_num, score_history):
             obs = next_obs
 
         score_history[process_num].append(rewards)
+        lines_cleared[process_num].append(info['lines_cleared'])
         avg_score = np.mean(score_history[process_num][-100:])
         episode += 1
 
@@ -136,15 +137,20 @@ def run(process_num, score_history):
         print('process_num', process_num, ' | episode', episode, ' | score %.1f' % rewards, ' | avg score %.1f' % avg_score,
                 ' | time_steps', steps, ' | runtime %d:%d:%.1f' % (hours, minutes, seconds))
 
-    
+
+
     np.savetxt(f'results/{filename}-{process_num}.txt', score_history[process_num], fmt='%d')
+    np.savetxt(f'results/lines_cleared/{filename}-{process_num}.txt', lines_cleared[process_num], fmt='%d')
+
     x = [i+1 for i in range(len(score_history[process_num]))]
     plot_learning_curve(x, score_history[process_num], f'plots/{filename}-{process_num}.png')
+    plot_learning_curve(x, lines_cleared[process_num], f'plots/lines_cleared/{filename}-{process_num}.png')
 
     pass
 
 threads = 5
 score_history = [[] for i in range(threads)]
+lines_cleared = [[] for i in range(threads)]
 import torch.multiprocessing as mproc
 import threading
 if __name__ == '__main__':
@@ -153,7 +159,7 @@ if __name__ == '__main__':
     UPDATE_EVENT, ROLLING_EVENT = threading.Event(), threading.Event()
     ROLLING_EVENT.set()
     for process_num in range(threads):
-            p = mproc.Process(target=run, args=(process_num, score_history))
+            p = mproc.Process(target=run, args=(process_num, score_history, lines_cleared))
             p.start()
             processes.append(p)
     for p in processes:
