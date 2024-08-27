@@ -12,7 +12,7 @@ from utils import make_env, to_tensor, save_models
 from utils import plot_learning_curve, plot_average_learning_curve
 import time
 
-filename='tetris-ppoc-2options'
+filename='tetris8x4-ppoc-2options'
 
 def run(process_num, score_history):
     env_name = 'SimpleTetris-v0'
@@ -22,7 +22,7 @@ def run(process_num, score_history):
 
     learning_rate = 0.0005
     max_history = 10000
-    max_steps = 2048*200
+    max_steps = 2048*50
     max_steps_ep = 10000
     num_options = 2
     batch_size = 64
@@ -39,7 +39,7 @@ def run(process_num, score_history):
     policy_clip = 0.2
 
     option_critic = option_critic(
-        in_features=env.observation_space.shape[0] if env_name != 'SimpleTetris-v0' else 200,
+        in_features=env.observation_space.shape[0] if env_name != 'SimpleTetris-v0' else 8*4,
         num_actions=env.action_space.n,
         num_options=num_options,
         temperature=1.0,
