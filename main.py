@@ -15,7 +15,7 @@ import time
 
 env_name = 'tetris20x10'
 max_steps = 200000
-num_options = 4
+num_options = 8
 
 filename=f'{env_name}-attentionoc-{num_options}options-{max_steps}steps'
 plot_path = f'plots/{filename}'
