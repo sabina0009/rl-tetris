@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import torch
 from copy import deepcopy
@@ -12,7 +13,7 @@ from utils import make_env, to_tensor, save_models
 from utils import plot_learning_curve, plot_average_learning_curve
 import time
 
-filename='tetris8x4-ppoc-4options'
+filename='tetris-ppoc-2options-N=20-200,000steps'
 
 def run(process_num, score_history):
     env_name = 'SimpleTetris-v0'
@@ -22,12 +23,12 @@ def run(process_num, score_history):
 
     learning_rate = 0.0005
     max_history = 10000
-    max_steps = 2048*50
+    max_steps = 200000
     max_steps_ep = 10000
-    num_options = 4
+    num_options = 2
     batch_size = 64
-    N = 2048
-    n_epochs = 10
+    N = 20
+    n_epochs = 4
 
     best_score = env.reward_range[0]
     avg_score = 0
@@ -39,7 +40,7 @@ def run(process_num, score_history):
     policy_clip = 0.2
 
     option_critic = option_critic(
-        in_features=env.observation_space.shape[0] if env_name != 'SimpleTetris-v0' else 8*4,
+        in_features=env.observation_space.shape[0] if env_name != 'SimpleTetris-v0' else 200,
         num_actions=env.action_space.n,
         num_options=num_options,
         temperature=1.0,
@@ -165,10 +166,19 @@ def run(process_num, score_history):
         print('process_num', process_num, ' | episode', episode, ' | score %.1f' % rewards, ' | avg score %.1f' % avg_score,
                 ' | time_steps', steps, ' | learning steps', learn_iters, ' | runtime %d:%d:%.1f' % (hours, minutes, seconds))
 
-        if episode % 50 == 0:
-            np.savetxt(f'results/{filename}-{process_num}.txt', score_history[process_num], fmt='%d')
-            x = [i+1 for i in range(len(score_history[process_num]))]
-            plot_learning_curve(x, score_history[process_num], f'plots/{filename}-{process_num}.png')
+    try:
+         os.mkdir(f'plots/{filename}')
+    except:
+         pass
+
+    try:
+         os.mkdir(f'results/{filename}')
+    except:
+         pass
+
+    np.savetxt(f'results/{filename}/{filename}-{process_num}.txt', score_history[process_num], fmt='%d')
+    x = [i+1 for i in range(len(score_history[process_num]))]
+    plot_learning_curve(x, score_history[process_num], f'plots/{filename}/{filename}-{process_num}.png')
 
     pass
 
