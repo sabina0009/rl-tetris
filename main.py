@@ -12,7 +12,7 @@ from utils import make_env, to_tensor, save_models
 from utils import plot_learning_curve, plot_average_learning_curve
 import time
 
-filename='tetris8x4-ppoc-2options'
+filename='tetris8x4-ppoc-4options'
 
 def run(process_num, score_history):
     env_name = 'SimpleTetris-v0'
@@ -24,7 +24,7 @@ def run(process_num, score_history):
     max_history = 10000
     max_steps = 2048*50
     max_steps_ep = 10000
-    num_options = 2
+    num_options = 4
     batch_size = 64
     N = 2048
     n_epochs = 10
