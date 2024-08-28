@@ -13,8 +13,8 @@ from utils import make_env, to_tensor, save_models
 from utils import plot_learning_curve, plot_average_learning_curve
 import time
 
-env_name = 'tetris20x10'
-max_steps = 200000
+env_name = 'tetris8x4'
+max_steps = 100000
 num_options = 8
 
 filename=f'{env_name}-attentionoc-{num_options}options-{max_steps}steps'
