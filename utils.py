@@ -42,7 +42,11 @@ def make_env(env_name):
     if env_name == 'fourrooms':
         return Fourrooms(), False
     
-    if env_name == 'SimpleTetris-v0':
+    if env_name == 'tetris20x10':
+        env = gymnasium.make('SimpleTetris-v0', reward_step=True)
+        return env, False 
+    
+    if env_name == 'tetris8x4':
         env = gymnasium.make('SimpleTetris-v0', height=8, width=4)
         return env, False 
 
@@ -82,9 +86,9 @@ def plot_multiple_learning_curves(figure_file, *results_files):
         j += 1
     plt.savefig(figure_file)
 
-def plot_average_learning_curve(filename, runs):
+def plot_average_learning_curve(plot_path, results_path, filename, runs):
     print(f'... plotting average of {runs} runs ...')
-    results_files = [f'results/{filename}-{i}.txt' for i in range(runs)]
+    results_files = [f'{results_path}/{filename}-{i}.txt' for i in range(runs)]
     scores = []
     for i in range(runs):
         score_history = np.loadtxt(results_files[i], dtype=int)
@@ -96,13 +100,13 @@ def plot_average_learning_curve(filename, runs):
     for i in range(min_len):
         avg = sum([scores[j][i] for j in range(runs)]) / runs
         avg_scores.append(avg)
-    np.savetxt(f'results/{filename}-average.txt', avg_scores, fmt='%d')
+    np.savetxt(f'{results_path}/{filename}-average.txt', avg_scores, fmt='%d')
     running_avg = np.zeros(len(avg_scores))
     for i in range(len(running_avg)):
         running_avg[i] = np.mean(avg_scores[max(0, i-100):(i+1)])
     plt.plot(x, running_avg)
     plt.title(f'{filename} average of {runs} runs')
-    plt.savefig(f'plots/{filename}-average.png')
+    plt.savefig(f'{plot_path}/{filename}-average.png')
 
 def save_models(option_critic, option_critic_prime, process_num, filename):
     print('... saving models ...')
