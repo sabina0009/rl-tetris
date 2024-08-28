@@ -59,8 +59,9 @@ def make_env(env_name):
     return env, is_atari
 
 def to_tensor(obs):
-    obs = np.asarray(obs)
-    obs = torch.from_numpy(obs).float()
+    if not torch.is_tensor(obs):
+        obs = np.asarray(obs)
+        obs = torch.from_numpy(obs).float()
     return obs
 
 def plot_learning_curve(x, scores, figure_file):

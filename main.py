@@ -14,18 +14,20 @@ from utils import plot_learning_curve, plot_average_learning_curve
 import time
 
 env_name = 'tetris20x10'
-max_steps = 1000
-num_options = 2
+max_steps = 200000
+num_options = 4
 
-filename=f'{env_name}-oc-{num_options}options-{max_steps}steps'
+filename=f'{env_name}-attentionoc-{num_options}options-{max_steps}steps'
 plot_path = f'plots/{filename}'
 results_path = f'results/{filename}'
-lines_path = f'results/lines_cleared/{filename}'
+lines_path = f'results/{filename}/lines_cleared'
 
 def run(process_num, score_history, lines_cleared):
     env, is_atari = make_env(env_name)
     option_critic = OptionCriticConv if is_atari else OptionCriticFeatures
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    additional_feature_len = 2 #added code
 
     learning_rate = 0.0005
     max_history = 10000
@@ -43,9 +45,9 @@ def run(process_num, score_history, lines_cleared):
     entropy_reg = 0.01
 
     if env_name == 'tetris20x10':
-        in_features = 200
+        in_features = 200 + additional_feature_len
     elif env_name == 'tetris8x4':
-        in_features = 32
+        in_features = 32 + additional_feature_len
     else:
         in_features = env.observation_space[0]
 
@@ -81,8 +83,12 @@ def run(process_num, score_history, lines_cleared):
         rewards = 0 ; option_lengths = {opt:[] for opt in range(num_options)}
 
         obs, info   = env.reset()
-        if env_name == 'tetris20x10' or 'tetris8x4':
-            obs = obs.flatten()
+
+        num_holes = env.engine.holes #added code
+        piece_height = sum(np.any(env.engine.board, axis=0)) #added code
+        additional_features = np.array([num_holes, piece_height]) #added code
+        obs = np.concatenate([obs.flatten(), additional_features]).flatten() #added code
+
         state = option_critic.get_state(to_tensor(obs))
         greedy_option  = option_critic.greedy_option(state)
         current_option = 0
@@ -96,12 +102,16 @@ def run(process_num, score_history, lines_cleared):
                 current_option = np.random.choice(num_options) if np.random.rand() < epsilon else greedy_option
                 curr_op_len = 0
     
-            action, logp, entropy = option_critic.get_action(state, current_option)
-
+            action, logp, entropy = option_critic.get_action(obs, current_option, env)
             next_obs, reward, terminated, truncated, info = env.step(action)
             done = terminated or truncated
-            if env_name == 'tetris20x10' or 'tetris8x4':
-                next_obs = next_obs.flatten()
+
+            num_holes = env.engine.holes #added code
+            piece_height = sum(np.any(env.engine.board, axis=0)) #added code
+            additional_features = np.array([num_holes, piece_height]) #added code
+            #print(f"num_holes: {num_holes}, piece_height: {piece_height}") #added code
+            next_obs = np.concatenate([next_obs.flatten(), additional_features]).flatten() #added code
+
             buffer.push(obs, current_option, reward, next_obs, done)
             rewards += reward
 

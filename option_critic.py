@@ -130,7 +130,7 @@ class OptionCriticFeatures(nn.Module):
                 gamma = 0.99,
                 termination_reg = 0.01, 
                 entropy_reg = 0.01,
-                chkpt_dir = 'tmp\oc'):
+                chkpt_dir = 'tmp/oc'):
 
         super(OptionCriticFeatures, self).__init__()
 
@@ -188,7 +188,34 @@ class OptionCriticFeatures(nn.Module):
     def get_terminations(self, state):
         return self.terminations(state).sigmoid() 
 
-    def get_action(self, state, option):
+    def get_action(self, obs, option, env):
+        ###  added code #####
+        hard_coded_attention_type = 1
+
+        if hard_coded_attention_type == 0:
+            #to mask all the extracted features based on the option:
+            state = self.get_state(to_tensor(obs))
+            mask = torch.zeros(64)
+            num_options = self.num_options
+            mask[option*(64//num_options):(option+1)*(64//num_options)] = 1
+            mask = mask.to(self.device)
+            state.data = state.data * mask
+
+        if hard_coded_attention_type == 1:
+            #to mask based on the additional features only (recommended):
+            #simple code to turn the additional features to 0 if the option is 0 or 1 (meaning that the attention is on the additional features)
+            #TODO: extend to more options with corrispoding additional features (here 2 options only with 2 additional features)
+            if option == 0: 
+                obs[len(obs)-2] = -1
+            if option == 1:
+                obs[len(obs)-1] = -1
+            state = self.get_state(to_tensor(obs))
+
+        if hard_coded_attention_type == 2:
+           #no attention
+           state = self.get_state(to_tensor(obs)) 
+        ####################
+
         logits = state.data @ self.options_W[option] + self.options_b[option]
         action_dist = (logits / self.temperature).softmax(dim=-1)
         action_dist = Categorical(action_dist)
