@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import torch
 from copy import deepcopy
@@ -12,17 +13,22 @@ from utils import make_env, to_tensor, save_models
 from utils import plot_learning_curve, plot_average_learning_curve
 import time
 
-filename='tetris-options=8-8x4'
+env_name = 'tetris20x10'
+max_steps = 1000
+num_options = 2
+
+filename=f'{env_name}-oc-{num_options}options-{max_steps}steps'
+plot_path = f'plots/{filename}'
+results_path = f'results/{filename}'
+lines_path = f'results/lines_cleared/{filename}'
 
 def run(process_num, score_history, lines_cleared):
-    env_name = 'SimpleTetris-v0'
     env, is_atari = make_env(env_name)
     option_critic = OptionCriticConv if is_atari else OptionCriticFeatures
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     learning_rate = 0.0005
     max_history = 10000
-    max_steps = 200000
     max_steps_ep = 10000
     num_options = 8
     batch_size = 32
@@ -36,8 +42,15 @@ def run(process_num, score_history, lines_cleared):
     termination_reg = 0.01
     entropy_reg = 0.01
 
+    if env_name == 'tetris20x10':
+        in_features = 200
+    elif env_name == 'tetris8x4':
+        in_features = 32
+    else:
+        in_features = env.observation_space[0]
+
     option_critic = option_critic(
-        in_features=env.observation_space.shape[0] if env_name != 'SimpleTetris-v0' else 8*4,
+        in_features= in_features,
         num_actions=env.action_space.n,
         num_options=num_options,
         temperature=1.0,
@@ -68,7 +81,7 @@ def run(process_num, score_history, lines_cleared):
         rewards = 0 ; option_lengths = {opt:[] for opt in range(num_options)}
 
         obs, info   = env.reset()
-        if env_name == 'SimpleTetris-v0':
+        if env_name == 'tetris20x10' or 'tetris8x4':
             obs = obs.flatten()
         state = option_critic.get_state(to_tensor(obs))
         greedy_option  = option_critic.greedy_option(state)
@@ -87,7 +100,7 @@ def run(process_num, score_history, lines_cleared):
 
             next_obs, reward, terminated, truncated, info = env.step(action)
             done = terminated or truncated
-            if env_name == 'SimpleTetris-v0':
+            if env_name == 'tetris20x10' or 'tetris8x4':
                 next_obs = next_obs.flatten()
             buffer.push(obs, current_option, reward, next_obs, done)
             rewards += reward
@@ -137,14 +150,26 @@ def run(process_num, score_history, lines_cleared):
         print('process_num', process_num, ' | episode', episode, ' | score %.1f' % rewards, ' | avg score %.1f' % avg_score,
                 ' | time_steps', steps, ' | runtime %d:%d:%.1f' % (hours, minutes, seconds))
 
+    try:
+         os.mkdir(plot_path)
+    except:
+         pass
+    
+    try:
+         os.mkdir(results_path)
+    except:
+         pass
+    
+    try:
+         os.mkdir(lines_path)
+    except:
+         pass
 
-
-    np.savetxt(f'results/{filename}-{process_num}.txt', score_history[process_num], fmt='%d')
-    np.savetxt(f'results/lines_cleared/{filename}-{process_num}.txt', lines_cleared[process_num], fmt='%d')
+    np.savetxt(f'{results_path}/{filename}-{process_num}.txt', score_history[process_num], fmt='%d')
+    np.savetxt(f'{lines_path}/{filename}-{process_num}.txt', lines_cleared[process_num], fmt='%d')
 
     x = [i+1 for i in range(len(score_history[process_num]))]
-    plot_learning_curve(x, score_history[process_num], f'plots/{filename}-{process_num}.png')
-    plot_learning_curve(x, lines_cleared[process_num], f'plots/lines_cleared/{filename}-{process_num}.png')
+    plot_learning_curve(x, score_history[process_num], f'{plot_path}/{filename}-{process_num}.png')
 
     pass
 
@@ -165,4 +190,4 @@ if __name__ == '__main__':
     for p in processes:
             p.join()
 
-    plot_average_learning_curve(filename, threads)
+    plot_average_learning_curve(plot_path, results_path, filename, threads)
