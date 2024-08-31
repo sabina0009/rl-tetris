@@ -11,10 +11,10 @@ batch_size = 64
 alpha = 0.0003
 upd_freq =200
 
-env_name = 'tetris8x4'
-max_steps = 150000
+env_name = 'tetris20x10'
+max_steps = 200000
 
-filename=f'{env_name}-dqn-softupdate-{max_steps}steps'
+filename=f'{env_name}-dqn-targetnets-400000steps'
 plot_path = f'plots/{filename}'
 results_path = f'results/{filename}'
 lines_path = f'results/{filename}/lines_cleared'
@@ -27,6 +27,7 @@ def run_worker(process_num, score_history, lines_cleared):
     agent = Agent(n_actions=env.action_space.n, batch_size=batch_size, alpha=alpha,
                     input_dims=[env.observation_space.shape[0] * env.observation_space.shape[1]])
     #n_games = 1000
+    agent.load_models()
     figure_file = f'plots/{filename}{process_num}.png'
     best_score = env.reward_range[0]
     avg_score = 0
@@ -46,7 +47,8 @@ def run_worker(process_num, score_history, lines_cleared):
             score += reward
             agent.remember(observation, action, observation_, reward, done)
             agent.learn()
-            agent.update_target_policy()
+            if agent.num_steps % 200 == 0:
+                agent.update_target_policy()
             observation = observation_
         score_history[process_num].append(score)
         lines_cleared[process_num].append(info['lines_cleared'])
@@ -62,7 +64,7 @@ def run_worker(process_num, score_history, lines_cleared):
         time_elapsed = time_elapsed % 3600
         minutes = time_elapsed // 60
         seconds = time_elapsed % 60
-        print('episode', episode, 'score %.1f' % score, 'avg score %.1f' % avg_score,
+        print('process_num', process_num, 'episode', episode, 'score %.1f' % score, 'avg score %.1f' % avg_score,
                 'time_steps', agent.num_steps, 'runtime %d:%d:%.1f' % (hours, minutes, seconds))
     
     try:

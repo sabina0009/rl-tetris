@@ -14,8 +14,8 @@ if __name__ == '__main__':
     agent = Agent(n_actions=env.action_space.n, batch_size=batch_size, alpha=alpha,
                     input_dims=[env.observation_space.shape[0] * env.observation_space.shape[1]])
     #n_games = 1000
-    max_steps = 100000
-    filename = 'tetris-dqn-target-net-soft-update'
+    max_steps = 400000
+    filename = 'tetris-dqn-target-net'
     figure_file = f'plots/{filename}.png'
     best_score = env.reward_range[0]
     score_history = []
@@ -36,7 +36,8 @@ if __name__ == '__main__':
             score += reward
             agent.remember(observation, action, observation_, reward, done)
             agent.learn()
-            agent.update_target_policy()
+            if agent.num_steps % upd_freq == 0:
+                agent.update_target_policy()
             observation = observation_
         score_history.append(score)
         avg_score = np.mean(score_history[-100:])
