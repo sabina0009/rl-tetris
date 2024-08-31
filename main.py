@@ -16,9 +16,9 @@ import time
 
 env_name = 'tetris20x10'
 max_steps = 200000
-num_options = 2
+num_options = 4
 
-filename=f'2 options - aggregate height - version 2 - {max_steps} steps'
+filename=f'4 options - aggregate height - version 3 - {max_steps} steps'
 plot_path = f'plots/{filename}'
 results_path = f'results/{filename}'
 lines_path = f'results/{filename}/lines_cleared'
@@ -33,7 +33,6 @@ def run(process_num, score_history, lines_cleared, num_options):
     learning_rate = 0.0005
     max_history = 10000
     max_steps_ep = 10000
-    num_options = 8
     batch_size = 32
     update_frequency = 4
     freeze_interval = 200
@@ -89,7 +88,7 @@ def run(process_num, score_history, lines_cleared, num_options):
         lines_cleared = env.engine.lines_cleared
         piece_height = sum(np.any(env.engine.board, axis=0)) #added code
         heights = get_column_heights(env.engine.board)
-        #aggregate_height = sum(heights)
+        aggregate_height = sum(heights)
         bumpiness = sum([abs(heights[i]-heights[i+1]) for i in range(len(heights)-1)])
         if additional_feature_len == 2:
             additional_features = np.array([num_holes, aggregate_height]) #added code
