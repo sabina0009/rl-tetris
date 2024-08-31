@@ -11,23 +11,24 @@ from experience_replay import ReplayBuffer
 from utils import make_env, to_tensor, save_models
 
 from utils import plot_learning_curve, plot_average_learning_curve
+from utils import get_column_heights
 import time
 
-env_name = 'tetris8x4'
-max_steps = 100000
-num_options = 8
+env_name = 'tetris20x10'
+max_steps = 200000
+num_options = 2
 
-filename=f'{env_name}-attentionoc-{num_options}options-{max_steps}steps'
+filename=f'2 options - aggregate height - version 2 - {max_steps} steps'
 plot_path = f'plots/{filename}'
 results_path = f'results/{filename}'
 lines_path = f'results/{filename}/lines_cleared'
 
-def run(process_num, score_history, lines_cleared):
+def run(process_num, score_history, lines_cleared, num_options):
     env, is_atari = make_env(env_name)
     option_critic = OptionCriticConv if is_atari else OptionCriticFeatures
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    additional_feature_len = 2 #added code
+    additional_feature_len = num_options #added code
 
     learning_rate = 0.0005
     max_history = 10000
@@ -82,11 +83,18 @@ def run(process_num, score_history, lines_cleared):
 
         rewards = 0 ; option_lengths = {opt:[] for opt in range(num_options)}
 
-        obs, info   = env.reset()
+        obs, _   = env.reset()
 
         num_holes = env.engine.holes #added code
+        lines_cleared = env.engine.lines_cleared
         piece_height = sum(np.any(env.engine.board, axis=0)) #added code
-        additional_features = np.array([num_holes, piece_height]) #added code
+        heights = get_column_heights(env.engine.board)
+        #aggregate_height = sum(heights)
+        bumpiness = sum([abs(heights[i]-heights[i+1]) for i in range(len(heights)-1)])
+        if additional_feature_len == 2:
+            additional_features = np.array([num_holes, aggregate_height]) #added code
+        elif additional_feature_len == 4:
+            additional_features =  np.array([num_holes, aggregate_height, lines_cleared, bumpiness])
         obs = np.concatenate([obs.flatten(), additional_features]).flatten() #added code
 
         state = option_critic.get_state(to_tensor(obs))
@@ -103,13 +111,20 @@ def run(process_num, score_history, lines_cleared):
                 curr_op_len = 0
     
             action, logp, entropy = option_critic.get_action(obs, current_option, env)
-            next_obs, reward, terminated, truncated, info = env.step(action)
+            next_obs, reward, terminated, truncated, _ = env.step(action)
             done = terminated or truncated
 
-            num_holes = env.engine.holes #added code
-            piece_height = sum(np.any(env.engine.board, axis=0)) #added code
-            additional_features = np.array([num_holes, piece_height]) #added code
-            #print(f"num_holes: {num_holes}, piece_height: {piece_height}") #added code
+            if env.engine.has_dropped:
+                num_holes = env.engine.holes #added code
+                lines_cleared = env.engine.lines_cleared
+                piece_height = sum(np.any(env.engine.board, axis=0)) #added code
+                heights = get_column_heights(env.engine.board)
+                aggregate_height = sum(heights)
+                bumpiness = sum([abs(heights[i]-heights[i+1]) for i in range(len(heights)-1)])
+            if additional_feature_len == 2:
+                additional_features = np.array([num_holes, aggregate_height]) #added code
+            elif additional_feature_len == 4:
+                additional_features =  np.array([num_holes, aggregate_height, lines_cleared, bumpiness])
             next_obs = np.concatenate([next_obs.flatten(), additional_features]).flatten() #added code
 
             buffer.push(obs, current_option, reward, next_obs, done)
@@ -143,7 +158,7 @@ def run(process_num, score_history, lines_cleared):
             obs = next_obs
 
         score_history[process_num].append(rewards)
-        lines_cleared[process_num].append(info['lines_cleared'])
+        lines_history[process_num].append(lines_cleared)
         avg_score = np.mean(score_history[process_num][-100:])
         episode += 1
 
@@ -176,7 +191,7 @@ def run(process_num, score_history, lines_cleared):
          pass
 
     np.savetxt(f'{results_path}/{filename}-{process_num}.txt', score_history[process_num], fmt='%d')
-    np.savetxt(f'{lines_path}/{filename}-{process_num}.txt', lines_cleared[process_num], fmt='%d')
+    np.savetxt(f'{lines_path}/{filename}-{process_num}.txt', lines_history[process_num], fmt='%d')
 
     x = [i+1 for i in range(len(score_history[process_num]))]
     plot_learning_curve(x, score_history[process_num], f'{plot_path}/{filename}-{process_num}.png')
@@ -185,7 +200,7 @@ def run(process_num, score_history, lines_cleared):
 
 threads = 5
 score_history = [[] for i in range(threads)]
-lines_cleared = [[] for i in range(threads)]
+lines_history = [[] for i in range(threads)]
 import torch.multiprocessing as mproc
 import threading
 if __name__ == '__main__':
@@ -194,7 +209,7 @@ if __name__ == '__main__':
     UPDATE_EVENT, ROLLING_EVENT = threading.Event(), threading.Event()
     ROLLING_EVENT.set()
     for process_num in range(threads):
-            p = mproc.Process(target=run, args=(process_num, score_history, lines_cleared))
+            p = mproc.Process(target=run, args=(process_num, score_history, lines_history, num_options))
             p.start()
             processes.append(p)
     for p in processes:
