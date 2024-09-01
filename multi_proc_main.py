@@ -11,8 +11,8 @@ batch_size = 64
 alpha = 0.0003
 upd_freq =200
 
-env_name = 'tetris20x10'
-max_steps = 200000
+env_name = 'tetris8x4'
+max_steps = 300000
 
 filename=f'{env_name}-dqn-targetnets-400000steps'
 plot_path = f'plots/{filename}'
@@ -27,7 +27,6 @@ def run_worker(process_num, score_history, lines_cleared):
     agent = Agent(n_actions=env.action_space.n, batch_size=batch_size, alpha=alpha,
                     input_dims=[env.observation_space.shape[0] * env.observation_space.shape[1]])
     #n_games = 1000
-    agent.load_models()
     figure_file = f'plots/{filename}{process_num}.png'
     best_score = env.reward_range[0]
     avg_score = 0
