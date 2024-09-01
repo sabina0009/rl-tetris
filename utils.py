@@ -1,6 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+import gymnasium
+import gym_simpletetris
+import numpy as np
+import torch
+
 def plot_learning_curve(x, scores, figure_file):
     running_avg = np.zeros(len(scores))
     for i in range(len(running_avg)):
@@ -45,3 +50,27 @@ def plot_average_learning_curve(filename, runs):
     plt.plot(x, running_avg)
     plt.title(f'{filename} average of {runs} runs')
     plt.savefig(f'plots/{filename}/average.png')
+
+def make_env(env_name):
+    if env_name == '20x10':
+        env = gymnasium.make('SimpleTetris-v0', reward_step=True)
+        return env, False 
+    
+    if env_name == '8x4':
+        env = gymnasium.make('SimpleTetris-v0', height=8, width=4)
+        return env, False 
+
+def to_tensor(obs):
+    obs = np.asarray(obs)
+    obs = torch.from_numpy(obs).float()
+    return obs
+
+def save_models(option_critic, option_critic_prime, process_num, filename):
+    print('... saving models ...')
+    option_critic.save_checkpoint(f'option_critic {filename} {process_num}')
+    option_critic_prime.save_checkpoint(f'option_critic_prime {filename} {process_num}')
+
+def load_models(option_critic, option_critic_prime, process_num, filename):
+    print('... loading models ...')
+    option_critic.load_checkpoint(f'option_critic {filename} {process_num}')
+    option_critic_prime.load_checkpoint(f'option_critic_prime {filename} {process_num}')
