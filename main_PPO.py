@@ -82,16 +82,6 @@ def run_PPO(args, filename):
         N = 20
         batch_size = 64
         n_epochs = 4
-    
-    elif args.version == 2:
-        N = 2048
-        batch_size = 32
-        n_epochs = 10
-    
-    elif args.version == 3:
-        N = 20
-        batch_size = 64
-        n_epochs = 4
          
     threads = args.runs
     score_history = [[] for i in range(threads)]
