@@ -5,12 +5,17 @@ import numpy as np
 from ppo_torch import Agent
 from utils import plot_learning_curve, plot_average_learning_curve
 import time
+import os
 
 import torch.multiprocessing as mproc
 import threading
 
 def run_worker(process_num, score_history, N, batch_size, n_epochs, args, filename):
     alpha = 0.0003
+
+    plot_path = f'plots/{filename}'
+    results_path = f'results/{filename}'
+
     if args.boardsize == '20x10':
         env = gym.make('SimpleTetris-v0', reward_step=True)
     elif args.boardsize == '8x4':
@@ -63,10 +68,22 @@ def run_worker(process_num, score_history, N, batch_size, n_epochs, args, filena
         print('process_num', process_num, 'episode', episode, 'score %.1f' % score, 'avg score %.1f' % avg_score,
             'time_steps', n_steps, 'learning_steps', learn_iters, 'runtime %d:%d:%.1f' % (hours, minutes, seconds))
     
-    np.savetxt(f'results/{filename}-{process_num}.txt', score_history[process_num], fmt='%d')
+    try:
+         os.mkdir(plot_path)
+    except:
+         pass
+    
+    try:
+         os.mkdir(results_path)
+    except:
+         pass
+    
+    
+    np.savetxt(f'{results_path}/{filename}-{process_num}.txt', score_history[process_num], fmt='%d')
 
     x = [i+1 for i in range(len(score_history[process_num]))]
-    plot_learning_curve(x, score_history[process_num], figure_file)
+    plot_learning_curve(x, score_history[process_num], f'{plot_path}/{filename}-{process_num}.png')
+
 
 
     pass
@@ -85,6 +102,7 @@ def run_PPO(args, filename):
          
     threads = args.runs
     score_history = [[] for i in range(threads)]
+
     processes = []
     UPDATE_EVENT, ROLLING_EVENT = threading.Event(), threading.Event()
     ROLLING_EVENT.set()
