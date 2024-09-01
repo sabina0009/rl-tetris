@@ -1,7 +1,7 @@
 import gym
 import gym_simpletetris
 import numpy as np
-from ppo_torch import Agent
+from ppo_sharednets_torch import Agent
 
     
 env = gym.make('SimpleTetris-v0', reward_step = True)
