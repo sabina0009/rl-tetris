@@ -2,6 +2,7 @@ import argparse
 from main_PPO import run_PPO
 from main_PPO_sharednets import run_PPO_sharednets
 from main_DQN import run_DQN
+from main_DQN_targetnets import run_DQN_target
 
 parser = argparse.ArgumentParser(description="RL Tetris Pytorch")
 
@@ -25,3 +26,5 @@ if __name__ == '__main__':
     if args.agent == 'DQN':
         if args.version == 0:
             run_DQN(args, filename)
+        if args.version in [1, 2]:
+            run_DQN_target(args, filename )
