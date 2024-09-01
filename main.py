@@ -1,66 +1,16 @@
-import gymnasium as gym
-import gym_simpletetris
-import numpy as np
-from ppo_torch import Agent
-from utils import plot_learning_curve
-import time
+import argparse
+from main_PPO import run_PPO
 
-filename = 'tetris-separate-ac-networks'
+parser = argparse.ArgumentParser(description="RL Tetris Pytorch")
+
+parser.add_argument('--agent', default='PPO', help='Choose RL agent: PPO, DQN, OC, PPOC, AOC')
+parser.add_argument('--boardsize', default = '20x10', help='20x10 or 8x4 Tetris board')
+parser.add_argument('--steps', default=1000, help='Number of time steps to run agent for')
+parser.add_argument('--runs', default=5, help='Number of runs of training')
+parser.add_argument('--version', default =0, help='See versions for each agent in README.md')
+parser.add_argument('--options', default = 2, help = 'Number of options for OC agents')
 
 if __name__ == '__main__':
-    env = gym.make('SimpleTetris-v0', reward_step=True)
-    N = 20
-    batch_size = 64
-    n_epochs = 4
-    alpha = 0.0003
-    agent = Agent(n_actions=env.action_space.n, filename=filename, batch_size=batch_size, 
-                    alpha=alpha, n_epochs=n_epochs, 
-                    input_dims=[env.observation_space.shape[0] * env.observation_space.shape[1]])
-    #n_games = 1000
-    max_steps = 400000
-    figure_file = f'plots/{filename}.png'
-    best_score = env.reward_range[0]
-    score_history = []
-    learn_iters = 0
-    avg_score = 0
-    n_steps = 0
-    episode = 0
-    start_time = time.time()
-    #for i in range(n_games):
-    while n_steps < max_steps:
-        observation, _ = env.reset()
-        observation = observation.flatten()
-        done = False
-        score = 0
-        while not done:
-            action, prob, val = agent.choose_action(observation)
-            observation_, reward, terminated, truncated, info = env.step(action)
-            done = terminated or truncated
-            observation_ = observation_.flatten()
-            n_steps += 1
-            score += reward
-            agent.remember(observation, action, prob, val, reward, done)
-            if n_steps % N == 0:
-                agent.learn()
-                learn_iters += 1
-            observation = observation_
-        score_history.append(score)
-        avg_score = np.mean(score_history[-100:])
-        episode += 1
-
-        if avg_score > best_score:
-            best_score = avg_score
-            agent.save_models()
-
-        time_elapsed = time.time() - start_time
-        hours = time_elapsed // 3600
-        time_elapsed = time_elapsed % 3600
-        minutes = time_elapsed // 60
-        seconds = time_elapsed % 60
-        print('episode', episode, 'score %.1f' % score, 'avg score %.1f' % avg_score,
-                'time_steps', n_steps, 'learning_steps', learn_iters, 'runtime %d:%d:%.1f' % (hours, minutes, seconds))
-    
-    np.savetxt(f'results/{filename}.txt', score_history, fmt='%d')
-
-    x = [i+1 for i in range(len(score_history))]
-    plot_learning_curve(x, score_history, figure_file)
+    args = parser.parse_args()
+    filename = f'Tetris {args.boardsize} - {args.agent}v{args.version} - {args.steps} steps'
+    run_PPO(args, filename)
