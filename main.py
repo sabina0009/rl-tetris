@@ -6,11 +6,11 @@ from main_DQN_targetnets import run_DQN_target
 
 parser = argparse.ArgumentParser(description="RL Tetris Pytorch")
 
-parser.add_argument('--agent', default='PPO', help='Choose RL agent: PPO, DQN, OC, PPOC, AOC')
-parser.add_argument('--boardsize', default = '20x10', help='20x10 or 8x4 Tetris board')
-parser.add_argument('--steps', default=1000, help='Number of time steps to run agent for')
+parser.add_argument('--agent', default='DQN', help='Choose RL agent: PPO, DQN, OC, PPOC, AOC')
+parser.add_argument('--boardsize', default = '8x4', help='20x10 or 8x4 Tetris board')
+parser.add_argument('--steps', default=100, help='Number of time steps to run agent for')
 parser.add_argument('--runs', default=5, help='Number of runs of training')
-parser.add_argument('--version', default=2, help='See versions for each agent in README.md')
+parser.add_argument('--version', default=1, help='See versions for each agent in README.md')
 parser.add_argument('--options', default=2, help = 'Number of options for OC agents')
 
 if __name__ == '__main__':
@@ -27,4 +27,4 @@ if __name__ == '__main__':
         if args.version == 0:
             run_DQN(args, filename)
         if args.version in [1, 2]:
-            run_DQN_target(args, filename )
+            run_DQN_target(args, filename)
