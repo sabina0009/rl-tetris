@@ -1,4 +1,3 @@
-import os
 import torch
 import torch.nn as nn
 from torch.distributions import Categorical, Bernoulli
@@ -20,8 +19,7 @@ class OptionCriticConv(nn.Module):
                 eps_decay=int(1e6),
                 eps_test=0.05,
                 device='cpu',
-                testing=False,
-                chkpt_dir = 'tmp/oc'):
+                testing=False):
 
         super(OptionCriticConv, self).__init__()
 
@@ -31,8 +29,6 @@ class OptionCriticConv(nn.Module):
         self.magic_number = 7 * 7 * 64
         self.device = device
         self.testing = testing
-
-        self.chkpt_dir = chkpt_dir
 
         self.temperature = temperature
         self.eps_min   = eps_min
@@ -105,14 +101,6 @@ class OptionCriticConv(nn.Module):
         else:
             eps = self.eps_test
         return eps
-    
-    def save_checkpoint(self, name):
-        checkpoint_file = os.path.join(self.chkpt_dir, name)
-        torch.save(self.state_dict(), checkpoint_file)
-    
-    def load_checkpoint(self, name):
-        checkpoint_file = os.path.join(self.chkpt_dir, name)
-        self.load_state_dict(torch.load(self.checkpoint_file))
 
 
 class OptionCriticFeatures(nn.Module):
@@ -126,11 +114,7 @@ class OptionCriticFeatures(nn.Module):
                 eps_decay=int(1e6),
                 eps_test=0.05,
                 device='cpu',
-                testing=False,
-                gamma = 0.99,
-                termination_reg = 0.01, 
-                entropy_reg = 0.01,
-                chkpt_dir = 'tmp/oc'):
+                testing=False):
 
         super(OptionCriticFeatures, self).__init__()
 
@@ -140,18 +124,12 @@ class OptionCriticFeatures(nn.Module):
         self.device = device
         self.testing = testing
 
-        self.chkpt_dir = chkpt_dir
-
         self.temperature = temperature
         self.eps_min   = eps_min
         self.eps_start = eps_start
         self.eps_decay = eps_decay
         self.eps_test  = eps_test
         self.num_steps = 0
-
-        self.gamma = gamma
-        self.termination_reg = termination_reg
-        self.entropy_reg = entropy_reg
         
         self.features = nn.Sequential(
             nn.Linear(in_features, 32),
@@ -159,12 +137,10 @@ class OptionCriticFeatures(nn.Module):
             nn.Linear(32, 64),
             nn.ReLU()
         )
-
         self.Q            = nn.Linear(64, num_options)                 # Policy-Over-Options
         self.terminations = nn.Linear(64, num_options)                 # Option-Termination
         self.options_W = nn.Parameter(torch.zeros(num_options, 64, num_actions))
         self.options_b = nn.Parameter(torch.zeros(num_options, num_actions))
-
         self.to(device)
         self.train(not testing)
 
@@ -174,7 +150,7 @@ class OptionCriticFeatures(nn.Module):
         obs = obs.to(self.device)
         state = self.features(obs)
         return state
-
+    
     def get_Q(self, state):
         return self.Q(state)
     
@@ -205,29 +181,22 @@ class OptionCriticFeatures(nn.Module):
             #to mask based on the additional features only (recommended):
             #simple code to turn the additional features to 0 if the option is 0 or 1 (meaning that the attention is on the additional features)
             #TODO: extend to more options with corrispoding additional features (here 2 options only with 2 additional features)
-            if self.num_options == 2:    
-                if option == 0: 
-                    obs[len(obs)-2] = -1
-                if option == 1:
-                    obs[len(obs)-1] = -1
-
-            if self.num_options == 4:
-                if option == 0: 
-                    obs[len(obs)-4] = -1
-                    obs[len(obs)-3] = -1
-                    obs[len(obs)-2] = -1
-                if option == 1:
-                    obs[len(obs)-4] = -1
-                    obs[len(obs)-3] = -1
-                    obs[len(obs)-1] = -1
-                if option == 2:
-                    obs[len(obs)-4] = -1
-                    obs[len(obs)-2] = -1
-                    obs[len(obs)-1] = -1
-                if option == 3:
-                    obs[len(obs)-3] = -1
-                    obs[len(obs)-2] = -1
-                    obs[len(obs)-1] = -1
+            if option == 0: 
+                obs[len(obs)-4] = -1
+                obs[len(obs)-3] = -1
+                obs[len(obs)-2] = -1
+            if option == 1:
+                obs[len(obs)-4] = -1
+                obs[len(obs)-3] = -1
+                obs[len(obs)-1] = -1   
+            if option == 2: 
+                obs[len(obs)-4] = -1
+                obs[len(obs)-2] = -1
+                obs[len(obs)-1] = -1
+            if option == 3:
+                obs[len(obs)-3] = -1
+                obs[len(obs)-2] = -1
+                obs[len(obs)-1] = -1           
             
             state = self.get_state(to_tensor(obs))
 
@@ -239,11 +208,9 @@ class OptionCriticFeatures(nn.Module):
         logits = state.data @ self.options_W[option] + self.options_b[option]
         action_dist = (logits / self.temperature).softmax(dim=-1)
         action_dist = Categorical(action_dist)
-
         action = action_dist.sample()
         logp = action_dist.log_prob(action)
         entropy = action_dist.entropy()
-
         return action.item(), logp, entropy
     
     def greedy_option(self, state):
@@ -258,17 +225,9 @@ class OptionCriticFeatures(nn.Module):
         else:
             eps = self.eps_test
         return eps
-    
-    def save_checkpoint(self, name):
-        checkpoint_file = os.path.join(self.chkpt_dir, name)
-        torch.save(self.state_dict(), checkpoint_file)
-    
-    def load_checkpoint(self, name):
-        checkpoint_file = os.path.join(self.chkpt_dir, name)
-        self.load_state_dict(torch.load(self.checkpoint_file))
 
 
-def critic_loss(model, model_prime, data_batch, gamma):
+def critic_loss(model, model_prime, data_batch, args):
     obs, options, rewards, next_obs, dones = data_batch
     batch_idx = torch.arange(len(options)).long()
     options   = torch.LongTensor(options).to(model.device)
@@ -289,14 +248,14 @@ def critic_loss(model, model_prime, data_batch, gamma):
     next_options_term_prob = next_termination_probs[batch_idx, options]
 
     # Now we can calculate the update target gt
-    gt = rewards + masks * gamma * \
+    gt = rewards + masks * args.gamma * \
         ((1 - next_options_term_prob) * next_Q_prime[batch_idx, options] + next_options_term_prob  * next_Q_prime.max(dim=-1)[0])
 
     # to update Q we want to use the actual network, not the prime
     td_err = (Q[batch_idx, options] - gt.detach()).pow(2).mul(0.5).mean()
     return td_err
 
-def actor_loss(obs, option, logp, entropy, reward, done, next_obs, model, model_prime, gamma, termination_reg, entropy_reg):
+def actor_loss(obs, option, logp, entropy, reward, done, next_obs, model, model_prime, args):
     state = model.get_state(to_tensor(obs))
     next_state = model.get_state(to_tensor(next_obs))
     next_state_prime = model_prime.get_state(to_tensor(next_obs))
@@ -308,13 +267,13 @@ def actor_loss(obs, option, logp, entropy, reward, done, next_obs, model, model_
     next_Q_prime = model_prime.get_Q(next_state_prime).detach().squeeze()
 
     # Target update gt
-    gt = reward + (1 - done) * gamma * \
+    gt = reward + (1 - done) * args.gamma * \
         ((1 - next_option_term_prob) * next_Q_prime[option] + next_option_term_prob  * next_Q_prime.max(dim=-1)[0])
 
     # The termination loss
-    termination_loss = option_term_prob * (Q[option].detach() - Q.max(dim=-1)[0].detach() + termination_reg) * (1 - done)
+    termination_loss = option_term_prob * (Q[option].detach() - Q.max(dim=-1)[0].detach() + args.termination_reg) * (1 - done)
     
     # actor-critic policy gradient with entropy regularization
-    policy_loss = -logp * (gt.detach() - Q[option]) - entropy_reg * entropy
+    policy_loss = -logp * (gt.detach() - Q[option]) - args.entropy_reg * entropy
     actor_loss = termination_loss + policy_loss
     return actor_loss

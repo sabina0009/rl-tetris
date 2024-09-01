@@ -1,6 +1,4 @@
 import gym
-import gymnasium
-import gym_simpletetris
 import numpy as np
 import torch
 
@@ -10,7 +8,6 @@ from gym.wrappers import FrameStack as FrameStack_
 from fourrooms import Fourrooms
 
 import matplotlib.pyplot as plt
-
 
 class LazyFrames(object):
     def __init__(self, frames):
@@ -41,14 +38,6 @@ def make_env(env_name):
 
     if env_name == 'fourrooms':
         return Fourrooms(), False
-    
-    if env_name == 'tetris20x10':
-        env = gymnasium.make('SimpleTetris-v0', reward_step=True)
-        return env, False 
-    
-    if env_name == 'tetris8x4':
-        env = gymnasium.make('SimpleTetris-v0', height=8, width=4)
-        return env, False 
 
     env = gym.make(env_name)
     is_atari = hasattr(gym.envs, 'atari') and isinstance(env.unwrapped, gym.envs.atari.atari_env.AtariEnv)
@@ -59,9 +48,8 @@ def make_env(env_name):
     return env, is_atari
 
 def to_tensor(obs):
-    if not torch.is_tensor(obs):
-        obs = np.asarray(obs)
-        obs = torch.from_numpy(obs).float()
+    obs = np.asarray(obs)
+    obs = torch.from_numpy(obs).float()
     return obs
 
 def plot_learning_curve(x, scores, figure_file):
@@ -108,16 +96,6 @@ def plot_average_learning_curve(plot_path, results_path, filename, runs):
     plt.plot(x, running_avg)
     plt.title(f'{filename} average of {runs} runs')
     plt.savefig(f'{plot_path}/{filename}-average.png')
-
-def save_models(option_critic, option_critic_prime, process_num, filename):
-    print('... saving models ...')
-    option_critic.save_checkpoint(f'option_critic {filename} {process_num}')
-    option_critic_prime.save_checkpoint(f'option_critic_prime {filename} {process_num}')
-
-def load_models(option_critic, option_critic_prime, process_num, filename):
-    print('... loading models ...')
-    option_critic.load_checkpoint(f'option_critic {filename} {process_num}')
-    option_critic_prime.load_checkpoint(f'option_critic_prime {filename} {process_num}')
 
 def get_column_heights(board):
     heights = []

@@ -72,7 +72,7 @@ wwwwwwwwwwwww
         state = self.rng.choice(self.init_states)
         self.currentcell = self.tocell[state]
         self.ep_steps = 0
-        return self.get_state(state), None
+        return self.get_state(state)
 
     def switch_goal(self):
         prev_goal = self.goal
@@ -122,7 +122,7 @@ wwwwwwwwwwwww
         if not done and self.ep_steps >= 1000:
             done = True ; reward = 0.0
 
-        return self.get_state(state), reward, done, False, None
+        return self.get_state(state), reward, done, None
 
 if __name__=="__main__":
     env = Fourrooms()
