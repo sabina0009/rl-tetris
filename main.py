@@ -31,11 +31,11 @@ parser.add_argument('--freeze-interval', type=int, default=200, help=('Interval 
 parser.add_argument('--update-frequency', type=int, default=4, help=('Number of actions before each SGD update.'))
 parser.add_argument('--termination-reg', type=float, default=0.01, help=('Regularization to decrease termination prob.'))
 parser.add_argument('--entropy-reg', type=float, default=0.01, help=('Regularization to increase policy entropy.'))
-parser.add_argument('--num-options', type=int, default=4, help=('Number of options to create.'))
+parser.add_argument('--num-options', type=int, default=2, help=('Number of options to create.'))
 parser.add_argument('--temp', type=float, default=1, help='Action distribution softmax tempurature param.')
 
 parser.add_argument('--max_steps_ep', type=int, default=10000000, help='number of maximum steps per episode.')
-parser.add_argument('--max_steps_total', type=int, default=200000, help='number of maximum steps to take.') # bout 4 million
+parser.add_argument('--max_steps_total', type=int, default=100000, help='number of maximum steps to take.') # bout 4 million
 parser.add_argument('--cuda', type=bool, default=True, help='Enable CUDA training (recommended if possible).')
 parser.add_argument('--seed', type=int, default=0, help='Random seed for numpy, torch, random.')
 parser.add_argument('--logdir', type=str, default='runs', help='Directory for logging statistics')
@@ -49,13 +49,13 @@ def run(args, process_num, score_history, plot_path, results_path, filename):
     import gymnasium as gym
     import gym_simpletetris
     
-    env = gym.make('SimpleTetris-v0', reward_step = True)    
+    env = gym.make('SimpleTetris-v0', height = 8, width = 4)    
 
 
     option_critic = OptionCriticConv if is_atari else OptionCriticFeatures
     device = torch.device('cuda' if torch.cuda.is_available() and args.cuda else 'cpu')
 
-    additional_feature_len = 4 #added code
+    additional_feature_len = 2 #added code
 
     option_critic = option_critic(
         in_features=env.observation_space.shape[0] * env.observation_space.shape[1] + additional_feature_len, #added code
@@ -88,11 +88,12 @@ def run(args, process_num, score_history, plot_path, results_path, filename):
         obs, _   = env.reset()
 
         num_holes = env.engine.holes #added code
-        heights = get_column_heights(env.engine.board)
-        aggregate_heights = sum(np.any(env.engine.board, axis=0)) #added code
-        lines = env.engine.lines_cleared
-        bumpiness = sum([abs(heights[i]-heights[i+1]) for i in range(len(heights)-1)])
-        additional_features = np.array([num_holes, aggregate_heights, lines, bumpiness]) #added code
+        piece_height = sum(np.any(env.engine.board, axis=0)) #added code
+        # heights = get_column_heights(env.engine.board)
+        # aggregate_heights = sum(np.any(env.engine.board, axis=0)) #added code
+        # lines = env.engine.lines_cleared
+        # bumpiness = sum([abs(heights[i]-heights[i+1]) for i in range(len(heights)-1)])
+        additional_features = np.array([num_holes, piece_height]) #added code
         obs = np.concatenate([obs.flatten(), additional_features]).flatten() #added code
 
         state = option_critic.get_state(to_tensor(obs))
@@ -113,13 +114,15 @@ def run(args, process_num, score_history, plot_path, results_path, filename):
             next_obs, reward, terminated, truncated, _ = env.step(action)
             done = terminated or truncated
 
-            if env.engine.has_dropped:
-                num_holes = env.engine.holes #added code
-                heights = get_column_heights(env.engine.board)
-                aggregate_heights = sum(np.any(env.engine.board, axis=0)) #added code
-                lines = env.engine.lines_cleared
-                bumpiness = sum([abs(heights[i]-heights[i+1]) for i in range(len(heights)-1)])
-            additional_features = np.array([num_holes, aggregate_heights, lines, bumpiness]) #added code
+            num_holes = env.engine.holes #added code
+            piece_height = sum(np.any(env.engine.board, axis=0)) #added code
+            # if env.engine.has_dropped:
+            #     num_holes = env.engine.holes #added code
+            #     heights = get_column_heights(env.engine.board)
+            #     aggregate_heights = sum(np.any(env.engine.board, axis=0)) #added code
+            #     lines = env.engine.lines_cleared
+            #     bumpiness = sum([abs(heights[i]-heights[i+1]) for i in range(len(heights)-1)])
+            additional_features = np.array([num_holes, piece_height]) #added code
             next_obs = np.concatenate([next_obs.flatten(), additional_features]).flatten() #added code
 
             buffer.push(obs, current_option, reward, next_obs, done)
@@ -181,7 +184,7 @@ if __name__ == '__main__':
     #share the network weights between the processes
     args = parser.parse_args()
 
-    filename=f'AOC-4 options-{args.max_steps_total} steps'
+    filename=f'AOC-8x4-2 options-{args.max_steps_total} steps'
     plot_path = f'plots/{filename}'
     results_path = f'results/{filename}'
 

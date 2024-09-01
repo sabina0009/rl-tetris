@@ -181,22 +181,28 @@ class OptionCriticFeatures(nn.Module):
             #to mask based on the additional features only (recommended):
             #simple code to turn the additional features to 0 if the option is 0 or 1 (meaning that the attention is on the additional features)
             #TODO: extend to more options with corrispoding additional features (here 2 options only with 2 additional features)
+            
             if option == 0: 
-                obs[len(obs)-4] = -1
-                obs[len(obs)-3] = -1
                 obs[len(obs)-2] = -1
             if option == 1:
-                obs[len(obs)-4] = -1
-                obs[len(obs)-3] = -1
-                obs[len(obs)-1] = -1   
-            if option == 2: 
-                obs[len(obs)-4] = -1
-                obs[len(obs)-2] = -1
                 obs[len(obs)-1] = -1
-            if option == 3:
-                obs[len(obs)-3] = -1
-                obs[len(obs)-2] = -1
-                obs[len(obs)-1] = -1           
+            
+            # if option == 0: 
+            #     obs[len(obs)-4] = -1
+            #     obs[len(obs)-3] = -1
+            #     obs[len(obs)-2] = -1
+            # if option == 1:
+            #     obs[len(obs)-4] = -1
+            #     obs[len(obs)-3] = -1
+            #     obs[len(obs)-1] = -1   
+            # if option == 2: 
+            #     obs[len(obs)-4] = -1
+            #     obs[len(obs)-2] = -1
+            #     obs[len(obs)-1] = -1
+            # if option == 3:
+            #     obs[len(obs)-3] = -1
+            #     obs[len(obs)-2] = -1
+            #     obs[len(obs)-1] = -1           
             
             state = self.get_state(to_tensor(obs))
 
