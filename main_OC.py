@@ -7,7 +7,7 @@ from option_critic import OptionCriticFeatures, OptionCriticConv
 from option_critic import critic_loss as critic_loss_fn
 from option_critic import actor_loss as actor_loss_fn
 
-from oc_experience_replay import ReplayBuffer
+from experience_replay import ReplayBuffer
 from utils import make_env, to_tensor, save_models
 
 from utils import plot_learning_curve, plot_average_learning_curve

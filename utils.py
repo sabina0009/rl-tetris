@@ -74,3 +74,14 @@ def load_models(option_critic, option_critic_prime, process_num, filename):
     print('... loading models ...')
     option_critic.load_checkpoint(f'option_critic {filename} {process_num}')
     option_critic_prime.load_checkpoint(f'option_critic_prime {filename} {process_num}')
+
+def get_column_heights(board):
+    heights = []
+    for column in board:
+        height = 0
+        column = column[::-1]
+        for i in range(len(column)):
+            if column[i] == 1:
+                height = i + 1
+        heights.append(height)
+    return heights
