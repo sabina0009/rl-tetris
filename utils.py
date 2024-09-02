@@ -42,11 +42,11 @@ def plot_average_learning_curve(filename, runs):
     for i in range(min_len):
         avg = sum([scores[j][i] for j in range(runs)]) / runs
         avg_scores.append(avg)
-    np.savetxt(f'results/average.txt', avg_scores, fmt='%d')
+    np.savetxt(f'results/{filename}/average.txt', avg_scores, fmt='%d')
     running_avg = np.zeros(len(avg_scores))
     for i in range(len(running_avg)):
         running_avg[i] = np.mean(avg_scores[max(0, i-100):(i+1)])
-    print(f'...plotting average or {runs} runs')
+    print(f'...plotting average or {runs} runs...')
     plt.plot(x, running_avg)
     plt.title(f'{filename} average of {runs} runs')
     plt.savefig(f'plots/{filename}/average.png')

@@ -130,7 +130,7 @@ class OptionCriticFeatures(nn.Module):
                 gamma = 0.99,
                 termination_reg = 0.01, 
                 entropy_reg = 0.01,
-                chkpt_dir = 'tmp\oc'):
+                chkpt_dir = 'tmp/oc'):
 
         super(OptionCriticFeatures, self).__init__()
 
