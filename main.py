@@ -27,8 +27,8 @@ def run(process_num, score_history):
     max_steps_ep = 10000
     num_options = 2
     batch_size = 64
-    N = 20
-    n_epochs = 4
+    N = 2048
+    n_epochs = 10
 
     best_score = env.reward_range[0]
     avg_score = 0
