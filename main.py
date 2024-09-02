@@ -13,9 +13,7 @@ from utils import make_env, to_tensor, save_models
 from utils import plot_learning_curve, plot_average_learning_curve
 import time
 
-filename='tetris-ppoc-2options-N=20-200,000steps'
-
-def run(process_num, score_history):
+def run(process_num, score_history, args, filename):
     env_name = 'SimpleTetris-v0'
     env, is_atari = make_env(env_name)
     option_critic = OptionCriticConv if is_atari else OptionCriticFeatures
@@ -23,9 +21,9 @@ def run(process_num, score_history):
 
     learning_rate = 0.0005
     max_history = 10000
-    max_steps = 200000
+    max_steps = args.steps
     max_steps_ep = 10000
-    num_options = 2
+    num_options = args.options
     batch_size = 64
     N = 2048
     n_epochs = 10
@@ -182,17 +180,17 @@ def run(process_num, score_history):
 
     pass
 
-threads = 5
-score_history = [[] for i in range(threads)]
-import torch.multiprocessing as mproc
-import threading
-if __name__ == '__main__':
-    #share the network weights between the processes
+
+def run_PPOC(args, filename):
+    threads = args.runs
+    score_history = [[] for i in range(threads)]
+    import torch.multiprocessing as mproc
+    import threading
     processes = []
     UPDATE_EVENT, ROLLING_EVENT = threading.Event(), threading.Event()
     ROLLING_EVENT.set()
     for process_num in range(threads):
-            p = mproc.Process(target=run, args=(process_num, score_history))
+            p = mproc.Process(target=run, args=(process_num, score_history, args, filename))
             p.start()
             processes.append(p)
     for p in processes:
