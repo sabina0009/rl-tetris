@@ -9,8 +9,8 @@ from main_AOC import run_AOC
 
 parser = argparse.ArgumentParser(description="RL Tetris Pytorch")
 
-parser.add_argument('--environment', default='CartPole', help='Choose environment: Tetris, CartPole or FourRooms')
-parser.add_argument('--agent', default='OC', help='Choose RL agent: PPO, DQN, OC, PPOC, AOC')
+parser.add_argument('--environment', default='FourRooms', help='Choose environment: Tetris, CartPole or FourRooms')
+parser.add_argument('--agent', default='PPOC', help='Choose RL agent: PPO, DQN, OC, PPOC, AOC')
 parser.add_argument('--boardsize', default = '8x4', help='20x10 or 8x4 Tetris board')
 parser.add_argument('--steps', default=100000, help='Number of time steps to run agent for')
 parser.add_argument('--runs', default=5, help='Number of runs of training')
