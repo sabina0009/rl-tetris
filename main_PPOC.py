@@ -12,10 +12,12 @@ from utils import make_env, to_tensor
 from utils import plot_learning_curve, plot_average_learning_curve
 import time
 
+from minigrid.wrappers import FlatObsWrapper
+
 def run(process_num, score_history, args, filename):
     env_name = args.boardsize
-    env, is_atari = make_env(env_name)
-    option_critic = OptionCriticConv if is_atari else OptionCriticFeatures
+    env, in_features = make_env(args.environment, env_name)
+    option_critic = OptionCriticFeatures
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     learning_rate = 0.0005
@@ -35,13 +37,6 @@ def run(process_num, score_history, args, filename):
     entropy_reg = 0.01
     eta = 0.01
     policy_clip = 0.2
-
-    if env_name == '20x10':
-        in_features = 200
-    elif env_name == '8x4':
-        in_features = 32
-    else:
-         in_features = env.observation_space.shape[0]
 
     option_critic = option_critic(
         in_features=in_features,
@@ -73,8 +68,11 @@ def run(process_num, score_history, args, filename):
 
         rewards = 0 ; option_lengths = {opt:[] for opt in range(num_options)}
 
-        obs, _   = env.reset()
-        if env_name == '20x10' or env_name == '8x4':
+        if args.environment == 'FourRooms':
+            obs = env.reset()
+        else:
+            obs, info   = env.reset()
+        if args.environment == 'Tetris':
             obs = obs.flatten()
         state = option_critic.get_state(to_tensor(obs))
         current_option = 0
@@ -93,9 +91,12 @@ def run(process_num, score_history, args, filename):
 
             action, logp, val = option_critic.choose_action(obs, current_option)
 
-            next_obs, reward, terminated, truncated, _ = env.step(action)
-            done = terminated or truncated
-            if env_name == '20x10' or env_name == '8x4':
+            if args.environment == 'FourRooms':
+                 next_obs, reward, done, _ = env.step(action)
+            else:
+                next_obs, reward, terminated, truncated, info = env.step(action)
+                done = terminated or truncated
+            if args.environment == 'Tetris':
                 next_obs = next_obs.flatten()
 
             steps += 1
@@ -153,6 +154,8 @@ def run(process_num, score_history, args, filename):
             state = option_critic.get_state(to_tensor(obs))
             option_termination = option_critic.predict_option_termination(state, current_option)
 
+        if args.environment == 'FourRooms':
+             rewards = ep_steps
         score_history[process_num].append(rewards)
         avg_score = np.mean(score_history[process_num][-100:])
         episode += 1

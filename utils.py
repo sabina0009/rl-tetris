@@ -2,7 +2,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import gymnasium
+import gym
 import gym_simpletetris
+from fourrooms import Fourrooms
 import numpy as np
 import torch
 
@@ -51,14 +53,28 @@ def plot_average_learning_curve(filename, runs):
     plt.title(f'{filename} average of {runs} runs')
     plt.savefig(f'plots/{filename}/average.png')
 
-def make_env(env_name):
-    if env_name == '20x10':
-        env = gymnasium.make('SimpleTetris-v0', reward_step=True)
-        return env, False 
+def make_env(environment, board_size):
+        
+    if environment == 'Tetris':
+        if board_size == '20x10':
+            env = gymnasium.make('SimpleTetris-v0', reward_step=True)
+            input_dims = 200
+            return env, input_dims 
+        
+        if board_size == '8x4':
+            env = gymnasium.make('SimpleTetris-v0', height=8, width=4)
+            input_dims = 32
+            return env, input_dims 
+        
+    elif environment == 'CartPole':
+        env = gymnasium.make('CartPole-v1')
+        input_dims = env.observation_space.shape[0]
+        return env, input_dims 
     
-    if env_name == '8x4':
-        env = gymnasium.make('SimpleTetris-v0', height=8, width=4)
-        return env, False 
+    elif environment == 'FourRooms':
+        env = Fourrooms()
+        input_dims = env.observation_space.shape[0]
+        return env, input_dims
 
 def to_tensor(obs):
     obs = np.asarray(obs)

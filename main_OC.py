@@ -17,17 +17,17 @@ import torch.multiprocessing as mproc
 import threading
 
 
-def run(process_num, score_history, lines_cleared, args, filename):
+def run(process_num, score_history, args, filename):
     max_steps = args.steps
     num_options = args.options
 
     plot_path = f'plots/{filename}'
     results_path = f'results/{filename}'
-    lines_path = f'results/{filename}/lines_cleared'
+    #lines_path = f'results/{filename}/lines_cleared'
 
     env_name = args.boardsize
-    env, is_atari = make_env(env_name)
-    option_critic = OptionCriticConv if is_atari else OptionCriticFeatures
+    env, in_features = make_env(args.environment, env_name)
+    option_critic = OptionCriticFeatures
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     learning_rate = 0.0005
@@ -44,13 +44,6 @@ def run(process_num, score_history, lines_cleared, args, filename):
     gamma = 0.99
     termination_reg = 0.01
     entropy_reg = 0.01
-
-    if env_name == '20x10':
-        in_features = 200
-    elif env_name == '8x4':
-        in_features = 32
-    else:
-        in_features = env.observation_space[0]
 
     option_critic = option_critic(
         in_features= in_features,
@@ -83,8 +76,11 @@ def run(process_num, score_history, lines_cleared, args, filename):
 
         rewards = 0 ; option_lengths = {opt:[] for opt in range(num_options)}
 
-        obs, info   = env.reset()
-        if env_name == 'tetris20x10' or 'tetris8x4':
+        if args.environment == 'FourRooms':
+            obs = env.reset()
+        else:
+            obs, info   = env.reset()
+        if args.environment == 'Tetris':
             obs = obs.flatten()
         state = option_critic.get_state(to_tensor(obs))
         greedy_option  = option_critic.greedy_option(state)
@@ -101,9 +97,12 @@ def run(process_num, score_history, lines_cleared, args, filename):
     
             action, logp, entropy = option_critic.get_action(state, current_option)
 
-            next_obs, reward, terminated, truncated, info = env.step(action)
-            done = terminated or truncated
-            if env_name == 'tetris20x10' or 'tetris8x4':
+            if args.environment == 'FourRooms':
+                next_obs, reward, done, _ = env.step(action)
+            else:
+                next_obs, reward, terminated, truncated, info = env.step(action)
+                done = terminated or truncated
+            if args.environment == 'Tetris':
                 next_obs = next_obs.flatten()
             buffer.push(obs, current_option, reward, next_obs, done)
             rewards += reward
@@ -135,8 +134,11 @@ def run(process_num, score_history, lines_cleared, args, filename):
             curr_op_len += 1
             obs = next_obs
 
+        if args.environment == 'FourRooms':
+            rewards = ep_steps
+
         score_history[process_num].append(rewards)
-        lines_cleared[process_num].append(info['lines_cleared'])
+        #lines_cleared[process_num].append(info['lines_cleared'])
         avg_score = np.mean(score_history[process_num][-100:])
         episode += 1
 
@@ -163,13 +165,13 @@ def run(process_num, score_history, lines_cleared, args, filename):
     except:
          pass
     
-    try:
-         os.mkdir(lines_path)
-    except:
-         pass
+    # try:
+    #      os.mkdir(lines_path)
+    # except:
+    #      pass
 
     np.savetxt(f'{results_path}/{filename}-{process_num}.txt', score_history[process_num], fmt='%d')
-    np.savetxt(f'{lines_path}/{filename}-{process_num}.txt', lines_cleared[process_num], fmt='%d')
+    #np.savetxt(f'{lines_path}/{filename}-{process_num}.txt', lines_cleared[process_num], fmt='%d')
 
     x = [i+1 for i in range(len(score_history[process_num]))]
     plot_learning_curve(x, score_history[process_num], f'{plot_path}/{filename}-{process_num}.png')
@@ -182,12 +184,12 @@ def run_OC(args, filename):
 
     threads = 5
     score_history = [[] for i in range(threads)]
-    lines_cleared = [[] for i in range(threads)]
+    #lines_cleared = [[] for i in range(threads)]
     processes = []
     UPDATE_EVENT, ROLLING_EVENT = threading.Event(), threading.Event()
     ROLLING_EVENT.set()
     for process_num in range(threads):
-            p = mproc.Process(target=run, args=(process_num, score_history, lines_cleared, args, filename))
+            p = mproc.Process(target=run, args=(process_num, score_history, args, filename))
             p.start()
             processes.append(p)
     for p in processes:
