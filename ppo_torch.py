@@ -1,3 +1,6 @@
+
+# Code based on https://www.youtube.com/watch?v=hlv79rcHws0&t=1977s
+
 import os
 import numpy as np
 import torch as T
@@ -47,6 +50,7 @@ class PPOMemory:
         self.dones = []
         self.vals = []
 
+# Separate actor and critic networks
 class ActorNetwork(nn.Module):
     def __init__(self, n_actions, input_dims, alpha, filename,
             fc1_dims=64, fc2_dims=64, chkpt_dir='tmp/ppo'):
@@ -66,6 +70,7 @@ class ActorNetwork(nn.Module):
         self.device = T.device('cpu')
         self.to(self.device)
 
+    # Get policy probability distribution
     def forward(self, state):
         dist = self.actor(state)
         dist = Categorical(dist)
@@ -96,6 +101,7 @@ class CriticNetwork(nn.Module):
         self.device = T.device('cpu')
         self.to(self.device)
 
+    # Get critic value
     def forward(self, state):
         value = self.critic(state)
 
@@ -132,6 +138,8 @@ class Agent:
         self.actor.load_checkpoint()
         self.critic.load_checkpoint()
 
+    # Sample policy probability distribution for next action, obtain actionlog probability, and obtain
+    # state critic value
     def choose_action(self, observation):
         state = T.tensor(observation, dtype=T.float).to(self.actor.device)
 
@@ -154,6 +162,7 @@ class Agent:
             values = vals_arr
             advantage = np.zeros(len(reward_arr), dtype=np.float32)
 
+            # Compute the advantage
             for t in range(len(reward_arr)-1):
                 discount = 1
                 a_t = 0
@@ -166,6 +175,7 @@ class Agent:
 
             values = T.tensor(values).to(self.actor.device)
             for batch in batches:
+                # Obtains transitons for batch
                 states = T.tensor(state_arr[batch], dtype=T.float).to(self.actor.device)
                 old_probs = T.tensor(old_prob_arr[batch]).to(self.actor.device)
                 actions = T.tensor(action_arr[batch]).to(self.actor.device)
@@ -174,6 +184,7 @@ class Agent:
 
                 critic_value = T.squeeze(critic_value)
 
+                # Compute clipped surrogate objective function
                 new_probs = dist.log_prob(actions)
                 prob_ratio = new_probs.exp() / old_probs.exp()
                 #prob_ratio = (new_probs - old_probs).exp()
@@ -182,10 +193,12 @@ class Agent:
                         1+self.policy_clip)*advantage[batch]
                 actor_loss = -T.min(weighted_probs, weighted_clipped_probs).mean()
 
+                # Find critic loss
                 returns = advantage[batch] + values[batch]
                 critic_loss = (returns-critic_value)**2
                 critic_loss = critic_loss.mean()
 
+                # Perform gradient ascent
                 total_loss = actor_loss + 0.5*critic_loss
                 self.actor.optimizer.zero_grad()
                 self.critic.optimizer.zero_grad()

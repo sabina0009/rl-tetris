@@ -1,3 +1,7 @@
+
+# Code based on https://github.com/lweitkamp/option-critic-pytorch
+# and https://github.com/mklissa/PPOC
+
 import os
 import numpy as np
 import torch
@@ -81,6 +85,7 @@ def run(process_num, score_history, args, filename):
         done = False ; ep_steps = 0 ; option_termination = True ; curr_op_len = 0
         while not done and ep_steps < max_steps_ep:
             
+            # Predict option termination and find next option using deliberation cost
             if option_termination:
                 option_lengths[current_option].append(curr_op_len)
                 current_option = option_critic.get_next_option(state)
@@ -89,6 +94,7 @@ def run(process_num, score_history, args, filename):
             else:
                 termination_cost = 0
 
+            # Choose next action 
             action, logp, val = option_critic.choose_action(obs, current_option)
 
             if args.environment == 'FourRooms':
@@ -105,11 +111,14 @@ def run(process_num, score_history, args, filename):
             reward = reward - termination_cost
             rewards += reward
 
+            # Store transition in memory
             buffer.push(obs, current_option, action, logp, val, reward, done)
 
             actor_loss, critic_loss = None, None
 
+            # Perform learning every N time steps
             if steps % N == 0:
+                # Perform learning n_epochs times
                 for _ in range(n_epochs):
                     obs_arr, option_arr, action_arr, old_prob_arr, vals_arr,\
                         reward_arr, dones_arr, batches = buffer.sample(batch_size)
@@ -117,6 +126,7 @@ def run(process_num, score_history, args, filename):
                     values = vals_arr
                     advantage = np.zeros(len(reward_arr), dtype=np.float32)
 
+                    # Compute advantage
                     for t in range(len(reward_arr)-1):
                         discount = 1
                         a_t = 0
@@ -138,10 +148,12 @@ def run(process_num, score_history, args, filename):
                         dones = torch.tensor(dones_arr[batch]).to(device)
                         dones = dones.long()
 
+                        # Get actor and critic loss
                         actor_loss = actor_loss_fn(option_critic, batch, states, old_probs, options, actions, dones, \
                                                    advantage, policy_clip, termination_cost, entropy_reg)
                         critic_loss = critic_loss_fn(option_critic, obss, options, advantage, values, batch)
 
+                        # Perform gradient ascent
                         total_loss = actor_loss + 0.5*critic_loss
                         optim.zero_grad()
                         total_loss.backward()

@@ -1,3 +1,7 @@
+
+# Code based adapted froms PPO agent, using tutorials https://www.youtube.com/watch?v=wc-FxNENg9U and 
+# https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
+
 import gymnasium as gym
 import gym_simpletetris
 import minigrid
@@ -43,6 +47,7 @@ def run_worker(process_num, score_history, args, filename):
           done = False
           score = 0
           ep_len = 0
+          # Episode loop
           while not done:
                action = agent.choose_action(observation)
                if args.environment == 'FourRooms':

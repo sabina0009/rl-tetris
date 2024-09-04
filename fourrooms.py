@@ -1,3 +1,6 @@
+
+# Code by https://github.com/lweitkamp/option-critic-pytorch
+
 import logging
 import math
 import gym

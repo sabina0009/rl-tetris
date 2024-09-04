@@ -1,3 +1,7 @@
+
+# Code based adapted froms PPO agent, using tutorials https://www.youtube.com/watch?v=wc-FxNENg9U and 
+# https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
+
 import os
 import gymnasium as gym
 import gym_simpletetris

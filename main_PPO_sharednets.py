@@ -1,4 +1,6 @@
 
+# Code based on https://www.youtube.com/watch?v=hlv79rcHws0&t=1977s
+
 import gymnasium as gym
 import gym_simpletetris
 import minigrid

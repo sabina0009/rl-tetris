@@ -1,4 +1,6 @@
 
+# Code based on https://www.youtube.com/watch?v=hlv79rcHws0&t=1977s
+
 import gymnasium as gym
 import gym_simpletetris
 import minigrid
@@ -46,7 +48,9 @@ def run_worker(process_num, score_history, N, batch_size, n_epochs, args, filena
         done = False
         score = 0
         ep_len = 0
+        # Episode loop
         while not done:
+            # Choose action according to policy and take step in environment
             action, prob, val = agent.choose_action(observation)
             if args.environment == 'FourRooms':
                  observation_, reward, done, _ = env.step(action)
@@ -58,8 +62,10 @@ def run_worker(process_num, score_history, N, batch_size, n_epochs, args, filena
             n_steps += 1
             score += reward
             ep_len += 1
+            # Store transition in memory
             agent.remember(observation, action, prob, val, reward, done)
             if n_steps % N == 0:
+                # Learn every N time steps
                 agent.learn()
                 learn_iters += 1
             observation = observation_

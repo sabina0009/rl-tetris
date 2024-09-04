@@ -1,3 +1,6 @@
+
+# Code based on https://www.youtube.com/watch?v=hlv79rcHws0&t=1977s
+
 import os
 import numpy as np
 import torch as T
@@ -52,6 +55,7 @@ class ActorCriticNetwork(nn.Module):
             fc1_dims=64, fc2_dims=64, chkpt_dir='tmp/ppo'):
         super(ActorCriticNetwork, self).__init__()
 
+        # Shared Actor-critic network
         self.checkpoint_file = os.path.join(chkpt_dir, 'actor_torch_ppo')
         self.features = nn.Sequential(
                 nn.Linear(*input_dims, fc1_dims),
@@ -69,16 +73,19 @@ class ActorCriticNetwork(nn.Module):
         self.device = T.device('cpu')
         self.to(self.device)
 
+    # Get state with extracted features from observation
     def extract_features(self, state):
         state = self.features(state)
         return state
 
+    # Pass state with extracted features through actor layers to get policy probability distribution
     def get_dist(self, state):
         dist = self.actor(state)
         dist = Categorical(dist)
         
         return dist
     
+    # Pass state with extracted features through critic layers to get state-value function
     def get_val(self, state):
         value = self.critic(state)
         return value
@@ -112,6 +119,7 @@ class Agent:
         print('... loading models ...')
         self.network.load_checkpoint()
 
+    # Choosing action based outputted probability distribution by actor
     def choose_action(self, observation):
         state = T.tensor(observation, dtype=T.float).to(self.network.device)
 
@@ -128,6 +136,7 @@ class Agent:
 
     def learn(self):
         for _ in range(self.n_epochs):
+            # Sample memory
             state_arr, action_arr, old_prob_arr, vals_arr,\
             reward_arr, dones_arr, batches = \
                     self.memory.generate_batches()
@@ -135,6 +144,7 @@ class Agent:
             values = vals_arr
             advantage = np.zeros(len(reward_arr), dtype=np.float32)
 
+            # Compute the advantage
             for t in range(len(reward_arr)-1):
                 discount = 1
                 a_t = 0
@@ -147,6 +157,7 @@ class Agent:
 
             values = T.tensor(values).to(self.network.device)
             for batch in batches:
+                # Obtains transitons for batch
                 states = T.tensor(state_arr[batch], dtype=T.float).to(self.network.device)
                 old_probs = T.tensor(old_prob_arr[batch]).to(self.network.device)
                 actions = T.tensor(action_arr[batch]).to(self.network.device)
@@ -156,6 +167,7 @@ class Agent:
 
                 critic_value = T.squeeze(critic_value)
 
+                # Compute clipped surrogate objective function
                 new_probs = dist.log_prob(actions)
                 prob_ratio = new_probs.exp() / old_probs.exp()
                 #prob_ratio = (new_probs - old_probs).exp()
@@ -164,10 +176,12 @@ class Agent:
                         1+self.policy_clip)*advantage[batch]
                 actor_loss = -T.min(weighted_probs, weighted_clipped_probs).mean()
 
+                # Find critic loss
                 returns = advantage[batch] + values[batch]
                 critic_loss = (returns-critic_value)**2
                 critic_loss = critic_loss.mean()
 
+                # Perform gradient ascent
                 total_loss = actor_loss + 0.5*critic_loss
                 self.network.optimizer.zero_grad()
                 total_loss.backward()

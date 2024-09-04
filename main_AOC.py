@@ -1,3 +1,7 @@
+
+# Code based on https://github.com/lweitkamp/option-critic-pytorch
+# Code modified in collaboration with project supervisor, Andreas Theophilou
+
 import numpy as np
 import argparse
 import torch
@@ -79,10 +83,10 @@ def run(process_num, score_history, plot_path, results_path, filename, arguments
     option_critic = OptionCriticConv if is_atari else OptionCriticFeatures
     device = torch.device('cuda' if torch.cuda.is_available() and cuda else 'cpu')
 
-    additional_feature_len = 4 #added code
+    additional_feature_len = num_options 
 
     option_critic = option_critic(
-        in_features=env.observation_space.shape[0] * env.observation_space.shape[1] + additional_feature_len, #added code
+        in_features=env.observation_space.shape[0] * env.observation_space.shape[1] + additional_feature_len,
         num_actions=env.action_space.n,
         num_options=num_options,
         temperature=temp,
@@ -111,14 +115,19 @@ def run(process_num, score_history, plot_path, results_path, filename, arguments
 
         obs, _   = env.reset()
 
-        num_holes = env.engine.holes #added code
-        #piece_height = sum(np.any(env.engine.board, axis=0)) #added code
-        heights = get_column_heights(env.engine.board)
-        aggregate_heights = sum(np.any(env.engine.board, axis=0)) #added code
+        # Get Tetris features
+        num_holes = env.engine.holes 
+        piece_height = sum(np.any(env.engine.board, axis=0)) 
+        heights = get_column_heights(env.engine.board) 
+        aggregate_heights = sum(np.any(env.engine.board, axis=0)) 
         lines = env.engine.lines_cleared
         bumpiness = sum([abs(heights[i]-heights[i+1]) for i in range(len(heights)-1)])
-        additional_features = np.array([num_holes, aggregate_heights, lines, bumpiness]) #added code
-        obs = np.concatenate([obs.flatten(), additional_features]).flatten() #added code
+        if additional_feature_len == 2:
+            additional_features = np.array([num_holes, piece_height]) 
+        if additional_feature_len == 4:
+            additional_features = np.array([num_holes, aggregate_heights, lines, bumpiness]) 
+        # Added features to the state representation
+        obs = np.concatenate([obs.flatten(), additional_features]).flatten() 
 
         state = option_critic.get_state(to_tensor(obs))
         greedy_option  = option_critic.greedy_option(state)
@@ -128,26 +137,32 @@ def run(process_num, score_history, plot_path, results_path, filename, arguments
         while not done and ep_steps < max_steps_ep:
             epsilon = option_critic.epsilon
 
+            # Predict option termination and find next option
             if option_termination:
                 option_lengths[current_option].append(curr_op_len)
                 current_option = np.random.choice(num_options) if np.random.rand() < epsilon else greedy_option
 
                 curr_op_len = 0
     
+            # Get next action and step environment
             action, logp, entropy = option_critic.get_action(obs, current_option, env)
             next_obs, reward, terminated, truncated, _ = env.step(action)
             done = terminated or truncated
 
-            num_holes = env.engine.holes #added code
-            #piece_height = sum(np.any(env.engine.board, axis=0)) #added code
-            if env.engine.has_dropped:
-                num_holes = env.engine.holes #added code
-                heights = get_column_heights(env.engine.board)
-                aggregate_heights = sum(np.any(env.engine.board, axis=0)) #added code
-                lines = env.engine.lines_cleared
-                bumpiness = sum([abs(heights[i]-heights[i+1]) for i in range(len(heights)-1)])
-            additional_features = np.array([num_holes, aggregate_heights, lines, bumpiness]) #added code
-            next_obs = np.concatenate([next_obs.flatten(), additional_features]).flatten() #added code
+            # Get feature and add to state representation
+            if additional_feature_len == 2:
+                num_holes = env.engine.holes 
+                piece_height = sum(np.any(env.engine.board, axis=0))
+                additional_features = np.array([num_holes, piece_height])
+            if additional_feature_len == 2:
+                if env.engine.has_dropped:
+                    num_holes = env.engine.holes 
+                    heights = get_column_heights(env.engine.board)
+                    aggregate_heights = sum(np.any(env.engine.board, axis=0)) 
+                    lines = env.engine.lines_cleared
+                    bumpiness = sum([abs(heights[i]-heights[i+1]) for i in range(len(heights)-1)])
+                additional_features = np.array([num_holes, aggregate_heights, lines, bumpiness]) 
+            next_obs = np.concatenate([next_obs.flatten(), additional_features]).flatten() 
 
             buffer.push(obs, current_option, reward, next_obs, done)
             rewards += reward +1

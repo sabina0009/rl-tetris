@@ -1,8 +1,11 @@
+
+# Code based on https://www.youtube.com/watch?v=hlv79rcHws0&t=1977s and 
+# https://github.com/lweitkamp/option-critic-pytorch
+
 import numpy as np
 import matplotlib.pyplot as plt
 
 import gymnasium
-import gym
 import gym_simpletetris
 from fourrooms import Fourrooms
 import numpy as np

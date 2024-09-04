@@ -1,3 +1,6 @@
+
+# Code based on https://github.com/lweitkamp/option-critic-pytorch
+
 import os
 import numpy as np
 import torch
@@ -90,11 +93,13 @@ def run(process_num, score_history, args, filename):
         while not done and ep_steps < max_steps_ep:
             epsilon = option_critic.epsilon
 
+            # Predicit option termination and get next option
             if option_termination:
                 option_lengths[current_option].append(curr_op_len)
                 current_option = np.random.choice(num_options) if np.random.rand() < epsilon else greedy_option
                 curr_op_len = 0
     
+            # Get next action
             action, logp, entropy = option_critic.get_action(state, current_option)
 
             if args.environment == 'FourRooms':
@@ -104,11 +109,13 @@ def run(process_num, score_history, args, filename):
                 done = terminated or truncated
             if args.environment == 'Tetris':
                 next_obs = next_obs.flatten()
+            # Store transition in memory
             buffer.push(obs, current_option, reward, next_obs, done)
             rewards += reward
 
             actor_loss, critic_loss = None, None
             if len(buffer) > batch_size:
+                # Find actor and critic losses
                 actor_loss = actor_loss_fn(obs, current_option, logp, entropy, \
                     reward, done, next_obs, option_critic, option_critic_prime, gamma, termination_reg, entropy_reg)
                 loss = actor_loss
@@ -118,10 +125,12 @@ def run(process_num, score_history, args, filename):
                     critic_loss = critic_loss_fn(option_critic, option_critic_prime, data_batch, gamma)
                     loss += critic_loss
 
+                # Carry out gradient descent
                 optim.zero_grad()
                 loss.backward()
                 optim.step()
 
+                # Update target network
                 if steps % freeze_interval == 0:
                     option_critic_prime.load_state_dict(option_critic.state_dict())
 

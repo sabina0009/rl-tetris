@@ -1,3 +1,6 @@
+
+# Code based on https://github.com/lweitkamp/option-critic-pytorch
+
 import os
 import torch
 import torch.nn as nn
@@ -153,6 +156,7 @@ class OptionCriticFeatures(nn.Module):
         self.termination_reg = termination_reg
         self.entropy_reg = entropy_reg
         
+        # Extract state features
         self.features = nn.Sequential(
             nn.Linear(in_features, 32),
             nn.ReLU(),
@@ -162,6 +166,7 @@ class OptionCriticFeatures(nn.Module):
 
         self.Q            = nn.Linear(64, num_options)                 # Policy-Over-Options
         self.terminations = nn.Linear(64, num_options)                 # Option-Termination
+        # Weights and biases for intra-option policies 
         self.options_W = nn.Parameter(torch.zeros(num_options, 64, num_actions))
         self.options_b = nn.Parameter(torch.zeros(num_options, num_actions))
 
@@ -178,6 +183,7 @@ class OptionCriticFeatures(nn.Module):
     def get_Q(self, state):
         return self.Q(state)
     
+    # Sample termination probabilities to prediction option termination
     def predict_option_termination(self, state, current_option):
         termination = self.terminations(state)[:, current_option].sigmoid()
         option_termination = Bernoulli(termination).sample()
@@ -185,9 +191,11 @@ class OptionCriticFeatures(nn.Module):
         next_option = Q.argmax(dim=-1)
         return bool(option_termination.item()), next_option.item()
     
+    # Get termination probabililty distribution
     def get_terminations(self, state):
         return self.terminations(state).sigmoid() 
 
+    # Sample intra-option policy probability distribution to get action
     def get_action(self, state, option):
         logits = state.data @ self.options_W[option] + self.options_b[option]
         action_dist = (logits / self.temperature).softmax(dim=-1)
@@ -220,7 +228,7 @@ class OptionCriticFeatures(nn.Module):
         checkpoint_file = os.path.join(self.chkpt_dir, name)
         self.load_state_dict(torch.load(self.checkpoint_file))
 
-
+# Calculate critic loss
 def critic_loss(model, model_prime, data_batch, gamma):
     obs, options, rewards, next_obs, dones = data_batch
     batch_idx = torch.arange(len(options)).long()
@@ -249,6 +257,7 @@ def critic_loss(model, model_prime, data_batch, gamma):
     td_err = (Q[batch_idx, options] - gt.detach()).pow(2).mul(0.5).mean()
     return td_err
 
+# Calculate actor loss
 def actor_loss(obs, option, logp, entropy, reward, done, next_obs, model, model_prime, gamma, termination_reg, entropy_reg):
     state = model.get_state(to_tensor(obs))
     next_state = model.get_state(to_tensor(next_obs))

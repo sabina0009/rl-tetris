@@ -1,3 +1,7 @@
+
+# Code based adapted froms PPO agent, using tutorials https://www.youtube.com/watch?v=wc-FxNENg9U and 
+# https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
+
 import os
 import numpy as np
 import torch as T
@@ -50,6 +54,7 @@ class DeepQNetwork(nn.Module):
             fc1_dims=64, fc2_dims=64, chkpt_dir='tmp/dqn'):
         super(DeepQNetwork, self).__init__()
 
+        # Deep Q network which inputs state and output Q values for each action
         self.checkpoint_file = os.path.join(chkpt_dir, 'nn_torch_dqn')
         self.nn = nn.Sequential(
                 nn.Linear(*input_dims, fc1_dims),
@@ -103,22 +108,25 @@ class Agent:
         print('... loading models ...')
         self.policy_network.load_checkpoint()
 
+    # Decrementing epsilon exponentially for epsilon-greedy policy.
     @property
     def epsilon(self):
         eps = self.eps_end + (self.eps_start - self.eps_end) * exp(-self.num_steps / self.eps_decay)
         self.num_steps += 1
         return eps
         
-
+    # Choose action according to epsilon greedy policy
     def choose_action(self, observation):
         sample = random.random()
         obs = np.asarray([observation])
         state = T.tensor(obs).to(self.policy_network.device)
         if sample > self.epsilon:
+            # Optimal action with maximum Q function
             with T.no_grad():
                 actions = self.policy_network.forward(state)
             return T.argmax(actions).item()
         else:
+            # Exploratory random action
             action = np.random.choice(self.action_space)
             return action
 
@@ -126,10 +134,12 @@ class Agent:
         if len(self.memory) < self.batch_size:
             return
         
+        # Sample minibatch of transitions from replay memory
         states_arr, actions_arr, next_states_arr, rewards_arr, dones_arr, batch = self.memory.sample(self.batch_size)
 
         batch_index = np.arange(self.batch_size, dtype=np.int32)
 
+        # Convert arrays to tensors
         states = T.tensor(states_arr[batch], dtype=T.float).to(self.policy_network.device)
         actions = actions_arr[batch]
         next_states = T.tensor(next_states_arr[batch], dtype=T.float).to(self.policy_network.device)
@@ -137,17 +147,21 @@ class Agent:
         dones = T.tensor(dones_arr[batch]).to(self.policy_network.device)
         dones = dones.long()
 
+        # Find Q values of state and next state
         q_eval = self.policy_network.forward(states)[batch_index, actions]
         q_next = self.target_network.forward(next_states)
 
+        # Compute y_t
         q_target = rewards + self.gamma * T.max(q_next, dim=1)[0] * (1 - dones)
 
+        # Carry out gradient descent (MSE loss)
         self.policy_network.zero_grad()
         loss = self.policy_network.loss(q_target, q_eval).to(self.policy_network.device)
         loss.backward()
         self.policy_network.optimizer.step()
 
     def update_target_policy(self, ver):
+        # Soft update
         if ver == 1:
             target_net_state_dict = self.target_network.state_dict()
             policy_net_state_dict = self.policy_network.state_dict()
@@ -157,6 +171,7 @@ class Agent:
                     + target_net_state_dict[key]*(1-self.tau)
             
             self.target_network.load_state_dict(target_net_state_dict)
+        # Hard update
         elif ver == 2:
             self.target_network.load_state_dict(self.policy_network.state_dict())
 

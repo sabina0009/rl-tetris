@@ -1,3 +1,7 @@
+
+# Code based on https://github.com/lweitkamp/option-critic-pytorch
+# and https://github.com/mklissa/PPOC
+
 import os
 import torch
 import torch.nn as nn
@@ -155,6 +159,8 @@ class OptionCriticFeatures(nn.Module):
         self.termination_reg = termination_reg
         self.entropy_reg = entropy_reg
         
+        # Separate actor and critic networks 
+        # Extract state features
         self.features = nn.Sequential(
             nn.Linear(in_features, fc1_dims),
             nn.ReLU(),
@@ -162,14 +168,18 @@ class OptionCriticFeatures(nn.Module):
             nn.ReLU()
         )
 
+        # Policy over options
         self.actor = nn.Sequential(
             nn.Linear(fc2_dims, num_options),
             nn.Softmax(dim=-1)
             )
-        self.terminations = nn.Linear(fc2_dims, num_options)                
+        # Tetrmination functions
+        self.terminations = nn.Linear(fc2_dims, num_options)   
+        # Weights and biases for intra-option policies             
         self.options_W = nn.Parameter(torch.zeros(num_options, fc2_dims, num_actions))
         self.options_b = nn.Parameter(torch.zeros(num_options, num_actions))
 
+        # State-options value function
         self.critic = nn.Sequential(
                 nn.Linear(in_features, fc1_dims),
                 nn.ReLU(),
@@ -256,6 +266,7 @@ def critic_loss(option_critic, obs, options, advantage, values, batch):
 
     critic_value = torch.squeeze(critic_value)
 
+    # Find PPO critic loss (MSE)
     returns = advantage[batch] + values[batch]
     critic_loss = (returns-critic_value)**2
     critic_loss = critic_loss.mean()
@@ -265,6 +276,7 @@ def critic_loss(option_critic, obs, options, advantage, values, batch):
 def actor_loss(option_critic, batch, states, old_probs, options, actions, dones, advantage, policy_clip, termination_cost, entropy_reg):
     dist = option_critic.get_action_dist(states, options)
 
+    # Compute clipped objective surrogate function
     new_probs = dist.log_prob(actions)
     prob_ratio = new_probs.exp() / old_probs.exp()
     #prob_ratio = (new_probs - old_probs).exp()
@@ -273,13 +285,16 @@ def actor_loss(option_critic, batch, states, old_probs, options, actions, dones,
             1+policy_clip)*advantage[batch]
     policy_loss = -torch.min(weighted_probs, weighted_clipped_probs).mean()
 
+    # Entropy regularisation
     entropy = dist.entropy()
     policy_loss -= entropy_reg * entropy.mean().detach()
 
+    # Termination loss
     term_prob = option_critic.get_terminations(states)[:,options].detach()
     termination_loss = term_prob*(advantage[batch]+termination_cost)*(1-dones)
     termination_loss = termination_loss.mean()
 
+    # Policy over options loss 
     option_dist = option_critic.get_option_dist(states)
     option_logp = option_dist.log_prob(options).detach()
     option_loss = -option_logp*advantage[batch]

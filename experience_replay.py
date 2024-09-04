@@ -1,3 +1,6 @@
+
+# Replay Buffer for OC, based on https://github.com/lweitkamp/option-critic-pytorch
+
 import numpy as np
 import random
 from collections import deque
