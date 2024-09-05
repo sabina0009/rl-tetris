@@ -17,19 +17,28 @@ Tetris, CartPole (not available for AOC), FourRooms (not available for AOC)
 ### Agents: 
 PPO, DQN, OC, PPOC, AOC
 
-Board size: 20x10, 8x4 (both only for Tetris)
+### Board size: 
+20x10, 8x4 (both only for Tetris)
 
-Steps: any int
+### Steps: 
+any int > 0
 
-Runs: any int
+### Runs: 
+any int > 0
 
-Versions: 0, 1, 2 (only applicable for PPO and DQN)
+### Versions: 
+0, 1, 2 (only applicable for PPO and DQN)
 
-Options: any int for OC or PPOC, 2 or 4 for AOC
+### Options: 
+any int for OC or PPOC, 2 or 4 for AOC
 
-Testing: True or False
+### Testing: 
+True or False
 
-Test Eps: any int
+### Test Eps: 
+any int
+
+### PPO Versions
 
 Version 0 of PPO is PPO with n_epochs=10, batch_size=32 and N=2048
 
@@ -37,15 +46,20 @@ Version 1 of PPO is PPO with n_epochs=10, batch_size=32 and N=2048
 
 Version 2 of PPO is PPO with shared actor-critic networks (in other versions they are spearate)
 
+### DQN Versions
+
 Version 0 of DQN has only a policy network
 
 Version 1 of DQN has a policy and target network which updates every 200 time steps
 
 Version 2 of DQN has a policy and target network which does soft updates every time step
 
+
 Steps is how many time steps to train for. Runs is how many rounds of training to do (done simultaneous through multiprocessing)
 
 testing=True runs a trained agent for testeps number of episodes, rendering the environment. If testing please ensure to only change testing to True and use all the same arguments as used for training.
+
+## Examples
 
 For example, if I wanted to run DQN for 200,000 timesteps, 3 runs, and version 1, in the CartPole environment, I would run:
 
