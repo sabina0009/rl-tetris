@@ -100,7 +100,7 @@ def run(process_num, score_history, args, filename):
                 curr_op_len = 0
     
             # Get next action
-            action, logp, entropy = option_critic.get_action(state, current_option)
+            action, logp, entropy = option_critic.choose_action(state, current_option)
 
             if args.environment == 'FourRooms':
                 next_obs, reward, done, _ = env.step(action)
@@ -191,7 +191,7 @@ def run_OC(args, filename):
     plot_path = f'plots/{filename}'
     results_path = f'results/{filename}'
 
-    threads = 5
+    threads = args.runs
     score_history = [[] for i in range(threads)]
     #lines_cleared = [[] for i in range(threads)]
     processes = []

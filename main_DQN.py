@@ -71,7 +71,7 @@ def run_worker(process_num, score_history, args, filename):
 
           if avg_score > best_score:
                best_score = avg_score
-               agent.save_models()
+               agent.save_models(filename, process_num)
 
           time_elapsed = time.time() - start_time
           hours = time_elapsed // 3600
@@ -106,7 +106,7 @@ def run_worker(process_num, score_history, args, filename):
     pass
 
 def run_DQN(args, filename):
-    threads = 5
+    threads = args.runs
     score_history = [[] for i in range(threads)]
     #lines_history = [[] for i in range(threads)]
 

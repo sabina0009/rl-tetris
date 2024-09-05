@@ -174,7 +174,7 @@ def run(process_num, score_history, args, filename):
 
         if avg_score > best_score:
             best_score = avg_score
-            option_critic.save_checkpoint(f'{filename}-{process_num}')
+            option_critic.save_checkpoint(f'{filename} {process_num}')
 
         time_elapsed = time.time() - start_time
         hours = time_elapsed // 3600

@@ -89,10 +89,9 @@ def save_models(option_critic, option_critic_prime, process_num, filename):
     option_critic.save_checkpoint(f'option_critic {filename} {process_num}')
     option_critic_prime.save_checkpoint(f'option_critic_prime {filename} {process_num}')
 
-def load_models(option_critic, option_critic_prime, process_num, filename):
+def load_models(agent, process_num, filename):
     print('... loading models ...')
-    option_critic.load_checkpoint(f'option_critic {filename} {process_num}')
-    option_critic_prime.load_checkpoint(f'option_critic_prime {filename} {process_num}')
+    agent.load_checkpoint(f'option_critic {filename} {process_num}')
 
 def get_column_heights(board):
     heights = []

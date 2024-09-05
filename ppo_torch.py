@@ -52,11 +52,11 @@ class PPOMemory:
 
 # Separate actor and critic networks
 class ActorNetwork(nn.Module):
-    def __init__(self, n_actions, input_dims, alpha, filename,
+    def __init__(self, n_actions, input_dims, alpha,
             fc1_dims=64, fc2_dims=64, chkpt_dir='tmp/ppo'):
         super(ActorNetwork, self).__init__()
 
-        self.checkpoint_file = os.path.join(chkpt_dir, 'actor_torch_ppo')
+        self.chkpt_dir = chkpt_dir
         self.actor = nn.Sequential(
                 nn.Linear(*input_dims, fc1_dims),
                 nn.ReLU(),
@@ -77,18 +77,18 @@ class ActorNetwork(nn.Module):
         
         return dist
 
-    def save_checkpoint(self):
-        T.save(self.state_dict(), self.checkpoint_file)
+    def save_checkpoint(self, filename, process_num):
+        T.save(self.state_dict(), os.path.join(self.chkpt_dir, f'actor {filename} {process_num}'))
 
-    def load_checkpoint(self):
-        self.load_state_dict(T.load(self.checkpoint_file))
+    def load_checkpoint(self, filename, process_num):
+        self.load_state_dict(T.load(f'{self.chkpt_dir}/actor {filename} {process_num}'))
 
 class CriticNetwork(nn.Module):
-    def __init__(self, input_dims, alpha, filename, fc1_dims=64, fc2_dims=64,
+    def __init__(self, input_dims, alpha, fc1_dims=64, fc2_dims=64,
             chkpt_dir='tmp/ppo'):
         super(CriticNetwork, self).__init__()
 
-        self.checkpoint_file = os.path.join(chkpt_dir, 'critic_torch_ppo')
+        self.chkpt_dir = chkpt_dir
         self.critic = nn.Sequential(
                 nn.Linear(*input_dims, fc1_dims),
                 nn.ReLU(),
@@ -107,36 +107,36 @@ class CriticNetwork(nn.Module):
 
         return value
 
-    def save_checkpoint(self):
-        T.save(self.state_dict(), self.checkpoint_file)
+    def save_checkpoint(self, filename, process_num):
+        T.save(self.state_dict(), os.path.join(self.chkpt_dir, f'critic {filename} {process_num}'))
 
-    def load_checkpoint(self):
-        self.load_state_dict(T.load(self.checkpoint_file))
+    def load_checkpoint(self, filename, process_num):
+        self.load_state_dict(T.load(os.path.join(self.chkpt_dir, f'critic {filename} {process_num}')))
 
 class Agent:
-    def __init__(self, n_actions, input_dims, filename, gamma=0.99, alpha=0.0003, gae_lambda=0.95,
-            policy_clip=0.2, batch_size=64, n_epochs=10):
+    def __init__(self, n_actions, input_dims, gamma=0.99, alpha=0.0003, gae_lambda=0.95,
+            policy_clip=0.2, batch_size=32, n_epochs=10):
         self.gamma = gamma
         self.policy_clip = policy_clip
         self.n_epochs = n_epochs
         self.gae_lambda = gae_lambda
 
-        self.actor = ActorNetwork(n_actions, input_dims, alpha, filename)
-        self.critic = CriticNetwork(input_dims, alpha, filename)
+        self.actor = ActorNetwork(n_actions, input_dims, alpha)
+        self.critic = CriticNetwork(input_dims, alpha)
         self.memory = PPOMemory(batch_size)
        
     def remember(self, state, action, probs, vals, reward, done):
         self.memory.store_memory(state, action, probs, vals, reward, done)
 
-    def save_models(self):
-        #print('... saving models ...')
-        self.actor.save_checkpoint()
-        self.critic.save_checkpoint()
+    def save_models(self, filename, process_num):
+        print('... saving models ...')
+        self.actor.save_checkpoint(filename, process_num)
+        self.critic.save_checkpoint(filename, process_num)
 
-    def load_models(self):
+    def load_models(self, filename, process_num):
         print('... loading models ...')
-        self.actor.load_checkpoint()
-        self.critic.load_checkpoint()
+        self.actor.load_checkpoint(filename, process_num)
+        self.critic.load_checkpoint(filename, process_num)
 
     # Sample policy probability distribution for next action, obtain actionlog probability, and obtain
     # state critic value

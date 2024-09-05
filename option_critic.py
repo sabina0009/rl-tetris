@@ -196,7 +196,7 @@ class OptionCriticFeatures(nn.Module):
         return self.terminations(state).sigmoid() 
 
     # Sample intra-option policy probability distribution to get action
-    def get_action(self, state, option):
+    def choose_action(self, state, option):
         logits = state.data @ self.options_W[option] + self.options_b[option]
         action_dist = (logits / self.temperature).softmax(dim=-1)
         action_dist = Categorical(action_dist)
@@ -226,7 +226,7 @@ class OptionCriticFeatures(nn.Module):
     
     def load_checkpoint(self, name):
         checkpoint_file = os.path.join(self.chkpt_dir, name)
-        self.load_state_dict(torch.load(self.checkpoint_file))
+        self.load_state_dict(torch.load(checkpoint_file))
 
 # Calculate critic loss
 def critic_loss(model, model_prime, data_batch, gamma):

@@ -12,7 +12,7 @@ from aoc import critic_loss as critic_loss_fn
 from aoc import actor_loss as actor_loss_fn
 
 from experience_replay import ReplayBuffer
-from utils import make_env, to_tensor
+from utils import make_env, to_tensor,  save_models
 from utils import plot_learning_curve, plot_average_learning_curve
 from utils import get_column_heights
 from logger import Logger
@@ -23,6 +23,8 @@ import gymnasium as gym
 import gym_simpletetris
 import torch.multiprocessing as mproc
 import threading
+
+import time
 
 # parser = argparse.ArgumentParser(description="Option Critic PyTorch")
 # parser.add_argument('--env', default='CartPole-v0', help='ROM to run')
@@ -53,7 +55,6 @@ import threading
 
 def run(process_num, score_history, plot_path, results_path, filename, arguments):
 
-    env_name=arguments.boardsize
     optimal_eps=0.05
     learning_rate=.001
     epsilon_start=1.0
@@ -66,18 +67,16 @@ def run(process_num, score_history, plot_path, results_path, filename, arguments
     num_options=arguments.options
     temp=1
 
+    avg_score = 0
+
     max_steps_ep=10000000
     max_steps_total=arguments.steps
     cuda=True
     seed=0
-    logdir='tmp/aoc'
 
-    env, is_atari = make_env(env_name)
-    
-    if arguments.boardsize == '20x10':
-        env = gym.make('SimpleTetris-v0', reward_step = True)  
-    elif arguments.boardsize == '8x4':
-        env = gym.make('SimpleTetris-v0', height = 8, width = 4)    
+    env, in_features = make_env(arguments.environment, arguments.boardsize)
+    is_atari = False
+    best_score = env.reward_range[0] 
 
 
     option_critic = OptionCriticConv if is_atari else OptionCriticFeatures
@@ -86,7 +85,7 @@ def run(process_num, score_history, plot_path, results_path, filename, arguments
     additional_feature_len = num_options 
 
     option_critic = option_critic(
-        in_features=env.observation_space.shape[0] * env.observation_space.shape[1] + additional_feature_len,
+        in_features=in_features + additional_feature_len,
         num_actions=env.action_space.n,
         num_options=num_options,
         temperature=temp,
@@ -106,8 +105,9 @@ def run(process_num, score_history, plot_path, results_path, filename, arguments
     #env.seed(args.seed)
 
     buffer = ReplayBuffer(capacity=max_history, seed=seed)
-    logger = Logger(logdir=logdir, run_name="tetris")
     steps = 0 ;
+    start_time = time.time()
+    episode = 0
 
     while steps < max_steps_total:
 
@@ -145,7 +145,7 @@ def run(process_num, score_history, plot_path, results_path, filename, arguments
                 curr_op_len = 0
     
             # Get next action and step environment
-            action, logp, entropy = option_critic.get_action(obs, current_option, env)
+            action, logp, entropy = option_critic.choose_action(obs, current_option)
             next_obs, reward, terminated, truncated, _ = env.step(action)
             done = terminated or truncated
 
@@ -154,7 +154,7 @@ def run(process_num, score_history, plot_path, results_path, filename, arguments
                 num_holes = env.engine.holes 
                 piece_height = sum(np.any(env.engine.board, axis=0))
                 additional_features = np.array([num_holes, piece_height])
-            if additional_feature_len == 2:
+            if additional_feature_len == 4:
                 if env.engine.has_dropped:
                     num_holes = env.engine.holes 
                     heights = get_column_heights(env.engine.board)
@@ -194,10 +194,23 @@ def run(process_num, score_history, plot_path, results_path, filename, arguments
             curr_op_len += 1
             obs = next_obs
 
-            logger.log_data(steps, actor_loss, critic_loss, entropy.item(), epsilon)
-
         score_history[process_num].append(rewards)
-        logger.log_episode(steps, rewards, option_lengths, ep_steps, epsilon)
+        score_history[process_num].append(rewards)
+        avg_score = np.mean(score_history[process_num][-100:])
+        episode += 1
+
+        if avg_score > best_score:
+            best_score = avg_score
+            save_models(option_critic, option_critic_prime, process_num, filename)
+
+        time_elapsed = time.time() - start_time
+        hours = time_elapsed // 3600
+        time_elapsed = time_elapsed % 3600
+        minutes = time_elapsed // 60
+        seconds = time_elapsed % 60
+
+        print('process_num', process_num, ' | episode', episode, ' | score %.1f' % rewards, ' | avg score %.1f' % avg_score,
+                ' | time_steps', steps, ' | runtime %d:%d:%.1f' % (hours, minutes, seconds))
 
     try:
         os.mkdir(plot_path)
@@ -216,7 +229,7 @@ def run(process_num, score_history, plot_path, results_path, filename, arguments
 
 
 def run_AOC(arguments, filename):
-    threads = 5
+    threads = args.runs
     score_history = [[] for i in range(threads)]
 
     plot_path = f'plots/{filename}'

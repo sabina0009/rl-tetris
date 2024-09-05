@@ -54,7 +54,7 @@ class DeepNeuralNetwork(nn.Module):
             fc1_dims=64, fc2_dims=64, chkpt_dir='tmp/dqn'):
         super(DeepNeuralNetwork, self).__init__()
 
-        self.checkpoint_file = os.path.join(chkpt_dir, 'nn_torch_dqn')
+        self.chkpt_dir = chkpt_dir
         self.nn = nn.Sequential(
                 nn.Linear(*input_dims, fc1_dims),
                 nn.ReLU(),
@@ -71,11 +71,11 @@ class DeepNeuralNetwork(nn.Module):
     def forward(self, state):
         return self.nn(state)
 
-    def save_checkpoint(self):
-        T.save(self.state_dict(), self.checkpoint_file)
+    def save_checkpoint(self, filename, process_num):
+        T.save(self.state_dict(), os.path.join(self.chkpt_dir, f'{filename} {process_num}'))
 
-    def load_checkpoint(self):
-        self.load_state_dict(T.load(self.checkpoint_file))
+    def load_checkpoint(self, filename, process_num):
+        self.load_state_dict(T.load(os.path.join(self.chkpt_dir, f'{filename} {process_num}')))
 
 
 class Agent:
@@ -98,14 +98,13 @@ class Agent:
     def remember(self, state, action, next_state, reward, done):
         self.memory.store_memory(state, action, next_state, reward, done)
 
-    def save_models(self):
-        #print('... saving models ...')
-        self.policy_network.save_checkpoint()
+    def save_models(self, filename, process_num):
+        print('... saving models ...')
+        self.policy_network.save_checkpoint(filename, process_num)
 
-
-    def load_models(self):
+    def load_models(self, filename, process_num):
         print('... loading models ...')
-        self.policy_network.load_checkpoint()
+        self.policy_network.load_checkpoint(filename, process_num)
 
     @property
     def epsilon(self):

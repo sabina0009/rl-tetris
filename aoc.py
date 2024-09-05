@@ -9,6 +9,7 @@ from math import exp
 import numpy as np
 
 from utils import to_tensor
+import os
 
 gamma=.99
 termination_reg=0.01
@@ -84,7 +85,7 @@ class OptionCriticConv(nn.Module):
     def get_terminations(self, state):
         return self.terminations(state).sigmoid() 
 
-    def get_action(self, state, option):
+    def choose_action(self, state, option):
         logits = state.data @ self.options_W[option] + self.options_b[option]
         action_dist = (logits / self.temperature).softmax(dim=-1)
         action_dist = Categorical(action_dist)
@@ -120,7 +121,8 @@ class OptionCriticFeatures(nn.Module):
                 eps_decay=int(1e6),
                 eps_test=0.05,
                 device='cpu',
-                testing=False):
+                testing=False,
+                chkpt_dir = 'tmp/aoc'):
 
         super(OptionCriticFeatures, self).__init__()
 
@@ -136,6 +138,7 @@ class OptionCriticFeatures(nn.Module):
         self.eps_decay = eps_decay
         self.eps_test  = eps_test
         self.num_steps = 0
+        self.chkpt_dir = chkpt_dir
         
         self.features = nn.Sequential(
             nn.Linear(in_features, 32),
@@ -170,7 +173,7 @@ class OptionCriticFeatures(nn.Module):
     def get_terminations(self, state):
         return self.terminations(state).sigmoid() 
 
-    def get_action(self, obs, option):
+    def choose_action(self, obs, option):
         # to mask based on the additional features only (recommended):
         # simple code to turn some of the additional features to -1
         # (meaning that the attention is on the additional features)
@@ -221,6 +224,14 @@ class OptionCriticFeatures(nn.Module):
         else:
             eps = self.eps_test
         return eps
+    
+    def save_checkpoint(self, name):
+        checkpoint_file = os.path.join(self.chkpt_dir, name)
+        torch.save(self.state_dict(), checkpoint_file)
+    
+    def load_checkpoint(self, name):
+        checkpoint_file = os.path.join(self.chkpt_dir, name)
+        self.load_state_dict(torch.load(checkpoint_file))
 
 
 def critic_loss(model, model_prime, data_batch):

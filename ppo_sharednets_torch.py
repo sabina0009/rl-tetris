@@ -56,7 +56,7 @@ class ActorCriticNetwork(nn.Module):
         super(ActorCriticNetwork, self).__init__()
 
         # Shared Actor-critic network
-        self.checkpoint_file = os.path.join(chkpt_dir, 'actor_torch_ppo')
+        self.chkpt_dir = chkpt_dir
         self.features = nn.Sequential(
                 nn.Linear(*input_dims, fc1_dims),
                 nn.ReLU(),
@@ -90,11 +90,11 @@ class ActorCriticNetwork(nn.Module):
         value = self.critic(state)
         return value
 
-    def save_checkpoint(self):
-        T.save(self.state_dict(), self.checkpoint_file)
+    def save_checkpoint(self, filename, process_num):
+        T.save(self.state_dict(), os.path.join(self.chkpt_dir, f'actor_critic {filename} {process_num}'))
 
-    def load_checkpoint(self):
-        self.load_state_dict(T.load(self.checkpoint_file))
+    def load_checkpoint(self, filename, process_num):
+        self.load_state_dict(T.load(os.path.join(self.chkpt_dir, f'actor_critic {filename} {process_num}')))
 
 
 class Agent:
@@ -111,13 +111,13 @@ class Agent:
     def remember(self, state, action, probs, vals, reward, done):
         self.memory.store_memory(state, action, probs, vals, reward, done)
 
-    def save_models(self):
-        #print('... saving models ...')
-        self.network.save_checkpoint()
+    def save_models(self, filename, process_num):
+        print('... saving models ...')
+        self.network.save_checkpoint(filename, process_num)
 
-    def load_models(self):
+    def load_models(self, filename, process_num):
         print('... loading models ...')
-        self.network.load_checkpoint()
+        self.network.load_checkpoint(filename, process_num)
 
     # Choosing action based outputted probability distribution by actor
     def choose_action(self, observation):
