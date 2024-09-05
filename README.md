@@ -78,5 +78,7 @@ python main.py --environment Tetris --agent AOC --boardsize 8x4 --steps 150,000 
 ```
 pytorch>=1.12.1
 gym>=0.15.3
-gym_simpletetris (adapted version) which can be downloaded from https://github.com/sabina0009/gym-simpletetris
+gym_simpletetris (adapted version)
 ```
+
+Adapted versions of gym_simpletetris can be downloaded from https://github.com/sabina0009/gym-simpletetris following instructions on how to clone the repository on README.md
