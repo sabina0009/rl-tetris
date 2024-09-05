@@ -11,14 +11,14 @@ from test_agents import test_agent
 parser = argparse.ArgumentParser(description="RL Tetris Pytorch")
 
 parser.add_argument('--environment', default='Tetris', help='Choose environment: Tetris, CartPole or FourRooms')
-parser.add_argument('--agent', default='DQN', help='Choose RL agent: PPO, DQN, OC, PPOC, AOC')
-parser.add_argument('--boardsize', default ='8x4', help='20x10 or 8x4 Tetris board')
+parser.add_argument('--agent', default='PPO', help='Choose RL agent: PPO, DQN, OC, PPOC, AOC')
+parser.add_argument('--boardsize', default ='20x10', help='20x10 or 8x4 Tetris board')
 parser.add_argument('--steps', default=100000, help='Number of time steps to run agent for')
-parser.add_argument('--runs', default=1, help='Number of runs of training')
-parser.add_argument('--version', default=1, help='See versions for each agent in README.md')
-parser.add_argument('--options', default=8, help = 'Number of options for OC agents')
+parser.add_argument('--runs', default=5, help='Number of runs of training')
+parser.add_argument('--version', default=0, help='See versions for each agent in README.md')
+parser.add_argument('--options', default=1, help = 'Number of options for OC agents')
 parser.add_argument('--testing', default=False, help='Train or test the agent.')
-parser.add_argument('--testeps', default=20, help='How many episodes to test for.')
+parser.add_argument('--testeps', default=10, help='How many episodes to test for.')
 
 if __name__ == '__main__':
     args = parser.parse_args()
