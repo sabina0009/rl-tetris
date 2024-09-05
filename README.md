@@ -81,4 +81,4 @@ gym>=0.15.3
 gym_simpletetris (adapted version)
 ```
 
-Adapted versions of gym_simpletetris can be downloaded from https://github.com/sabina0009/gym-simpletetris following instructions on how to clone the repository on README.md
+Adapted version of gym_simpletetris can be downloaded from https://github.com/sabina0009/gym-simpletetris following instructions on how to clone the repository on README.md
