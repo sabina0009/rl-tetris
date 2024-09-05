@@ -11,22 +11,34 @@ python main.py
 ## Other options
 To run different versions, use the following arguments:
 
-Environments: Tetris, CartPole (not available for AOC), FourRooms (not available for AOC)
+Environments: Tetris, CartPole (not available for AOC), FourRooms (not available for AOC) 
+
 Agents: PPO, DQN, OC, PPOC, AOC
+
 Board size: 20x10, 8x4 (both only for Tetris)
+
 Steps: any int
+
 Runs: any int
+
 Versions: 0, 1, 2 (only applicable for PPO and DQN)
+
 Options: any int for OC or PPOC, 2 or 4 for AOC
+
 Testing: True or False
+
 Test Eps: any int
 
 Version 0 of PPO is PPO with n_epochs=10, batch_size=32 and N=2048
+
 Version 1 of PPO is PPO with n_epochs=10, batch_size=32 and N=2048
+
 Version 2 of PPO is PPO with shared actor-critic networks (in other versions they are spearate)
 
 Version 0 of DQN has only a policy network
+
 Version 1 of DQN has a policy and target network which updates every 200 time steps
+
 Version 2 of DQN has a policy and target network which does soft updates every time step
 
 Steps is how many time steps to train for. Runs is how many rounds of training to do (done simultaneous through multiprocessing)
