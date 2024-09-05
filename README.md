@@ -11,9 +11,11 @@ python main.py
 ## Other options
 To run different versions, use the following arguments:
 
-Environments: Tetris, CartPole (not available for AOC), FourRooms (not available for AOC) 
+### Environments: 
+Tetris, CartPole (not available for AOC), FourRooms (not available for AOC) 
 
-Agents: PPO, DQN, OC, PPOC, AOC
+### Agents: 
+PPO, DQN, OC, PPOC, AOC
 
 Board size: 20x10, 8x4 (both only for Tetris)
 
