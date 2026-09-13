@@ -1,4 +1,4 @@
-# Learning to play Tetris with the Option-critic Architeture
+# Learning to play Tetris with the Option-critic Architecture
 This repository contains all the code developed during the course of the dissertation.
 
 ## Basic usage 
